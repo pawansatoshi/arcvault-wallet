@@ -25,19 +25,29 @@
         .text-gradient { background: linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.5) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .fade-in { animation: fadeIn 0.8s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Modal Background */
         .modal-overlay { background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-4 sm:p-8">
 
-    <div id="app-header" class="mb-10 text-center fade-in">
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="splash-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black fade-in">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Arc_logo.svg/1024px-Arc_logo.svg.png" class="w-24 h-24 mb-8 opacity-80" alt="Logo">
+        <h1 class="text-3xl font-extrabold text-gradient mb-8">Welcome to ArcVault</h1>
+        <button onclick="startExperience()" class="py-4 px-10 arc-btn-gradient rounded-full text-black font-black tracking-widest uppercase animate-pulse">
+            Tap to Enter
+        </button>
+    </div>
+
+    <div id="app-header" class="hidden mb-6 text-center fade-in">
         <h1 class="text-4xl font-extrabold tracking-tighter text-gradient">ArcVault</h1>
         <p class="text-[10px] uppercase tracking-[0.3em] font-bold text-emerald-400 mt-2">Architect Protocol v1.0</p>
     </div>
 
-    <div id="auth-ui" class="w-full max-w-sm space-y-4 fade-in">
+    <div id="auth-ui" class="hidden w-full max-w-sm space-y-4 fade-in">
         <div class="glass rounded-[38px] p-7 space-y-3 shadow-2xl">
             <button onclick="login('google')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all group">
                 <span class="font-bold text-sm tracking-tight group-hover:text-white">Sign in with Google</span>
@@ -46,7 +56,7 @@
                 <span class="font-bold text-sm tracking-tight group-hover:text-white text-gray-300">Sign in with X</span>
             </button>
             <button onclick="login('github')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all group">
-                <span class="font-bold text-sm tracking-tight group-hover:text-white text-gray-400">Developer Login (GitHub)</span>
+                <span class="font-bold text-sm tracking-tight group-hover:text-white text-gray-400">Sign in with GitHub</span>
             </button>
             <div class="flex items-center space-x-3 py-2">
                 <div class="h-[1px] flex-1 bg-white/10"></div>
@@ -54,42 +64,50 @@
                 <div class="h-[1px] flex-1 bg-white/10"></div>
             </div>
             <button onclick="loginEmailPhone()" class="w-full py-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all">
-                <span class="font-bold text-xs text-emerald-500/80 tracking-widest uppercase">Email or Mobile</span>
+                <span class="font-bold text-xs text-emerald-500/80 tracking-widest uppercase">Email / Mobile</span>
             </button>
         </div>
     </div>
 
-    <div id="wallet-ui" class="hidden w-full max-w-md space-y-6 fade-in">
-        <div class="glass rounded-[48px] p-10 text-center relative overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
+    <div id="wallet-ui" class="hidden w-full max-w-md space-y-4 fade-in">
+        
+        <div class="flex justify-between px-2 mb-2">
+            <button onclick="stopVoice()" class="text-[10px] text-gray-400 hover:text-white uppercase font-bold tracking-wider">🛑 Stop Audio</button>
+            <div class="space-x-3">
+                <button onclick="backupWallet()" class="text-[10px] text-emerald-400 hover:text-emerald-300 uppercase font-bold tracking-wider">💾 Backup to Drive</button>
+                <button onclick="logoutApp()" class="text-[10px] text-red-400 hover:text-red-300 uppercase font-bold tracking-wider">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div class="glass rounded-[48px] p-8 text-center relative overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
             <div class="absolute top-6 right-8 flex items-center space-x-1">
                 <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
                 <span class="text-[9px] font-black text-emerald-400 tracking-tighter uppercase">Arc Live</span>
             </div>
             
-            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-3">Modular Smart Account</p>
-            <h2 class="text-6xl font-extrabold tracking-tighter italic mb-8">$0.00</h2>
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-2">Modular Smart Account</p>
+            <h2 class="text-5xl font-extrabold tracking-tighter italic mb-6">$0.00</h2>
 
             <div id="diagnostic-log" class="hidden mb-4 bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-left font-mono text-[11px] text-red-400 break-all">
                 <strong class="text-white">🛰️ Node Diagnostic:</strong>
                 <div id="diag-msg" class="mt-2">Initializing protocol...</div>
             </div>
 
-            <div class="bg-black/40 border border-white/5 p-4 rounded-3xl inline-block max-w-full">
+            <div class="bg-black/40 border border-white/5 p-4 rounded-3xl inline-block w-full">
                 <p id="wallet-address" class="text-[10px] font-mono text-gray-400 break-all leading-tight">Securing your smart vault...</p>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-            <button onclick="playMetroVoice('Send module currently locked for testing.')" class="py-7 arc-btn-gradient text-black font-black rounded-[32px] text-xl shadow-[0_15px_35px_rgba(0,255,163,0.25)] uppercase tracking-tighter">Send</button>
-            <button onclick="openReceiveModal()" class="py-7 glass font-black rounded-[32px] text-xl uppercase tracking-tighter active:scale-95 transition-transform">Receive</button>
+            <button onclick="playCustomVoice('Send module currently locked for testing.')" class="py-5 arc-btn-gradient text-black font-black rounded-[28px] text-lg uppercase tracking-tighter shadow-lg">Send</button>
+            <button onclick="openReceiveModal()" class="py-5 glass font-black rounded-[28px] text-lg uppercase tracking-tighter">Receive</button>
         </div>
 
-        <div class="glass rounded-3xl p-6 mt-4">
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Security: Bind Accounts</h3>
-            <p class="text-[10px] text-gray-500 mb-4">Link backup accounts so you never lose access to your vault.</p>
+        <div class="glass rounded-3xl p-6">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Security: Bind Accounts</h3>
             <div class="grid grid-cols-3 gap-2">
                 <button onclick="linkAccount('google')" class="py-2 bg-white/5 rounded-xl text-xs font-bold hover:bg-white/10">Google</button>
-                <button onclick="linkAccount('twitter')" class="py-2 bg-white/5 rounded-xl text-xs font-bold hover:bg-white/10">X (Twitter)</button>
+                <button onclick="linkAccount('twitter')" class="py-2 bg-white/5 rounded-xl text-xs font-bold hover:bg-white/10">X</button>
                 <button onclick="linkAccount('github')" class="py-2 bg-white/5 rounded-xl text-xs font-bold hover:bg-white/10">GitHub</button>
             </div>
         </div>
@@ -99,22 +117,19 @@
         <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-emerald-500/30">
             <h3 class="text-xl font-black mb-2 text-white">Receive Assets</h3>
             <p class="text-xs text-gray-400 mb-6">Arc Network (Testnet) Only</p>
-            
             <div class="bg-black/60 p-4 rounded-2xl mb-6">
                 <p id="modal-address" class="font-mono text-xs text-emerald-400 break-all"></p>
             </div>
-            
             <button onclick="copyAddress()" class="w-full py-4 arc-btn-gradient text-black font-black rounded-2xl mb-3">COPY ADDRESS</button>
             <button onclick="closeReceiveModal()" class="w-full py-3 bg-white/5 rounded-2xl text-xs font-bold">Close</button>
         </div>
     </div>
 
     <script type="module">
+        // 1. IMPORT FIREBASE (Auth + Firestore DB)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { 
-            getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider,
-            signInWithEmailAndPassword, createUserWithEmailAndPassword, linkWithPopup
-        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, linkWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI",
@@ -125,30 +140,66 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- 🗣️ AI BEAUTIFUL VOICE ENGINE ---
+        let synth = window.speechSynthesis;
+        let preferredVoice = null;
         
-        // --- 🗣️ AI METRO VOICE SYSTEM ---
-        window.playMetroVoice = function(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // Stop current speech
-                const msg = new SpeechSynthesisUtterance(text);
-                msg.rate = 0.95; // Metro announcement speed
-                msg.pitch = 1.05;
-                window.speechSynthesis.speak(msg);
-            }
+        synth.onvoiceschanged = () => {
+            const voices = synth.getVoices();
+            // Try to find a smooth, clear female voice (Google UK, Samantha, etc.)
+            preferredVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('UK English')) || voices[0];
+        };
+
+        window.playCustomVoice = function(text) {
+            if (!synth) return;
+            synth.cancel(); 
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.rate = 0.85; // Slow, soothing speed
+            msg.pitch = 1.0;
+            if(preferredVoice) msg.voice = preferredVoice;
+            synth.speak(msg);
+        };
+
+        window.stopVoice = function() {
+            synth.cancel();
+            document.getElementById('bg-music').pause();
+        };
+
+        // --- START EXPERIENCE (INTRO) ---
+        window.startExperience = () => {
+            document.getElementById('splash-screen').classList.add('hidden');
+            document.getElementById('app-header').classList.remove('hidden');
+            
+            // Start BGM
+            const bgm = document.getElementById('bg-music');
+            bgm.volume = 0.2; // Keep music quiet behind the voice
+            bgm.play().catch(e => console.log("Audio autoplay blocked."));
+
+            // Play Intro Script
+            const introScript = "Greetings. Welcome to Arc Vault. This is a modular smart account protocol built on the Arc Network and secured by Circle institutional infrastructure. Here, you can safely manage assets without seed phrases, securely binding your vault to your favorite social identities. Please log in to initialize your secure session.";
+            playCustomVoice(introScript);
+
+            // Check if user is already logged in from a previous session
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    showWallet(user);
+                } else {
+                    document.getElementById('auth-ui').classList.remove('hidden');
+                }
+            });
         };
 
         // --- AUTHENTICATION ---
         window.login = async (pName) => {
-            playMetroVoice("Initiating secure login.");
-            let p;
-            if(pName === 'google') p = new GoogleAuthProvider();
-            if(pName === 'twitter') p = new TwitterAuthProvider();
-            if(pName === 'github') p = new GithubAuthProvider();
-            
+            playCustomVoice(`Initializing ${pName} secure login.`);
+            let p = pName === 'google' ? new GoogleAuthProvider() : 
+                    pName === 'twitter' ? new TwitterAuthProvider() : new GithubAuthProvider();
             try {
                 const res = await signInWithPopup(auth, p);
                 showWallet(res.user);
-            } catch (e) { alert("Identity Error: " + e.message); }
+            } catch (e) { alert("Error: " + e.message); }
         };
 
         window.loginEmailPhone = async () => {
@@ -159,7 +210,7 @@
                     const res = await signInWithEmailAndPassword(auth, input, pw);
                     showWallet(res.user);
                 } catch (e) {
-                    if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-email') {
+                    if (e.code === 'auth/user-not-found') {
                         const reg = await createUserWithEmailAndPassword(auth, input, pw);
                         showWallet(reg.user);
                     } else { alert("Login failed."); }
@@ -167,86 +218,114 @@
             }
         };
 
-        // --- ACCOUNT BINDING (ANTI-HACK) ---
-        window.linkAccount = async (pName) => {
-            const user = auth.currentUser;
-            if (!user) return;
-            
-            playMetroVoice("Requesting account link.");
-            let p;
-            if(pName === 'google') p = new GoogleAuthProvider();
-            if(pName === 'twitter') p = new TwitterAuthProvider();
-            if(pName === 'github') p = new GithubAuthProvider();
-
-            try {
-                await linkWithPopup(user, p);
-                playMetroVoice(pName + " account successfully linked for backup.");
-                alert(`Success! You can now log in using your ${pName} account to access this same wallet.`);
-            } catch (e) {
-                if (e.code === 'auth/credential-already-in-use') {
-                    playMetroVoice("Error. This account is already tied to another vault.");
-                    alert("This account is already linked to a different wallet.");
-                } else {
-                    console.error(e);
-                }
-            }
+        window.logoutApp = async () => {
+            await signOut(auth);
+            playCustomVoice("Logging out. Your vault is secure.");
+            document.getElementById('wallet-ui').classList.add('hidden');
+            document.getElementById('auth-ui').classList.remove('hidden');
+            document.getElementById('wallet-address').innerText = "Securing your smart vault...";
         };
 
-        // --- RECEIVE MODAL LOGIC ---
+        window.linkAccount = async (pName) => {
+            if (!auth.currentUser) return;
+            playCustomVoice(`Requesting security bind for ${pName}.`);
+            let p = pName === 'google' ? new GoogleAuthProvider() : 
+                    pName === 'twitter' ? new TwitterAuthProvider() : new GithubAuthProvider();
+            try {
+                await linkWithPopup(auth.currentUser, p);
+                playCustomVoice(`${pName} successfully bound as a backup recovery method.`);
+                alert("Success! Account linked.");
+            } catch (e) { alert("Failed or already linked to another account."); }
+        };
+
+        // --- BACKUP TO GOOGLE DRIVE (FILE DOWNLOAD) ---
+        window.backupWallet = () => {
+            const addr = document.getElementById('wallet-address').innerText;
+            if(!addr.startsWith("0x")) return alert("Wait for wallet to load.");
+            
+            const backupText = `--- ARC VAULT RECOVERY FILE ---\n\nUser ID: ${auth.currentUser.uid}\nWallet Address: ${addr}\nNetwork: Arc Testnet\nDate: ${new Date().toLocaleString()}\n\nKeep this file safe. Do not share it.`;
+            
+            const blob = new Blob([backupText], { type: "text/plain" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `ArcVault_Backup_${auth.currentUser.uid.substring(0,6)}.txt`;
+            a.click();
+            
+            playCustomVoice("Backup file generated. Save this to your Google Drive or local storage.");
+        };
+
+        // --- RECEIVE MODAL ---
         window.openReceiveModal = () => {
             document.getElementById('receive-modal').classList.remove('hidden');
             document.getElementById('modal-address').innerText = document.getElementById('wallet-address').innerText;
-            playMetroVoice("Receive panel opened.");
+            playCustomVoice("Receive panel opened. Verify network before sending assets.");
         };
-
-        window.closeReceiveModal = () => {
-            document.getElementById('receive-modal').classList.add('hidden');
-        };
-
+        window.closeReceiveModal = () => { document.getElementById('receive-modal').classList.add('hidden'); };
         window.copyAddress = () => {
-            const addr = document.getElementById('modal-address').innerText;
-            navigator.clipboard.writeText(addr);
-            playMetroVoice("Vault address successfully copied to clipboard.");
+            navigator.clipboard.writeText(document.getElementById('modal-address').innerText);
+            playCustomVoice("Vault address successfully copied to clipboard.");
         };
 
-        // --- WALLET INITIALIZATION ---
-        function showWallet(user) {
+        // --- WALLET INITIALIZATION & DATABASE PERSISTENCE ---
+        async function showWallet(user) {
             document.getElementById('auth-ui').classList.add('hidden');
-            document.getElementById('app-header').classList.add('hidden');
             document.getElementById('wallet-ui').classList.remove('hidden');
-            createModularWallet(user.uid);
-        }
-
-        async function createModularWallet(uid) {
-            const log = document.getElementById('diagnostic-log');
-            const msg = document.getElementById('diag-msg');
+            
             const addressBox = document.getElementById('wallet-address');
+            addressBox.classList.replace('text-red-400', 'text-gray-400');
+            addressBox.innerText = "Scanning database for your vault...";
 
             try {
+                // 1. CHECK FIREBASE DATABASE FIRST
+                const userRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userRef);
+
+                if (userDoc.exists() && userDoc.data().walletAddress) {
+                    // WALLET FOUND IN DB! No need to call Circle.
+                    const existingAddress = userDoc.data().walletAddress;
+                    addressBox.innerText = existingAddress;
+                    addressBox.classList.replace('text-gray-400', 'text-emerald-400');
+                    playCustomVoice("Welcome back. Vault unlocked and ready.");
+                    return;
+                }
+
+                // 2. NO WALLET FOUND - CREATE NEW ONE VIA VERCEL
+                addressBox.innerText = "No vault found. Generating new Smart Account via Circle Node...";
+                playCustomVoice("Generating new secure smart account.");
+
                 const res = await fetch('/api/wallet', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: uid, action: 'create' })
+                    body: JSON.stringify({ userId: user.uid, action: 'create' })
                 });
                 
                 const d = await res.json();
                 
                 if (!res.ok) {
-                    log.classList.remove('hidden');
-                    msg.innerHTML = `Error ${res.status}: ${d.message || JSON.stringify(d)}`;
-                    addressBox.innerText = "Protocol Connection Error";
+                    document.getElementById('diagnostic-log').classList.remove('hidden');
+                    document.getElementById('diag-msg').innerHTML = `Error ${res.status}: ${JSON.stringify(d)}`;
+                    addressBox.innerText = "Connection Error";
                     return;
                 }
 
                 if (d.data && d.data.wallets) {
-                    addressBox.innerText = d.data.wallets[0].address;
+                    const newAddress = d.data.wallets[0].address;
+                    
+                    // 3. SAVE THE NEW ADDRESS TO FIREBASE DB FOREVER
+                    await setDoc(userRef, { 
+                        walletAddress: newAddress,
+                        createdAt: new Date().toISOString()
+                    });
+
+                    addressBox.innerText = newAddress;
                     addressBox.classList.replace('text-gray-400', 'text-emerald-400');
-                    playMetroVoice("Welcome to Arc Vault. Your modular smart account is online.");
+                    playCustomVoice("Vault successfully generated and permanently secured to your identity.");
                 }
             } catch (err) {
                 addressBox.innerText = "Network Error.";
+                console.error(err);
             }
         }
     </script>
 </body>
-</html>
+    </html>
