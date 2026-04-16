@@ -2,226 +2,99 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ArcVault</title>
-    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ArcVault | Modular Wallet</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --arc-bg: #050507;
-            --arc-blue: #0D47FF;
-            --circle-blue: #2775CA;
-            --usyc-gold: #FFCC00;
-            --eurc-slate: #8E9BAE;
-            --success-green: #32D74B;
-        }
-        body { background-color: var(--arc-bg); color: white; font-family: -apple-system, sans-serif; overflow-x: hidden; }
-        
-        /* Premium Glassmorphism */
-        .glass-card {
-            background: rgba(17, 18, 22, 0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-        }
-        
-        .usdc-glow { text-shadow: 0 0 20px rgba(39, 117, 202, 0.5); color: var(--circle-blue); }
-        .skeleton { background: #1f2025; animation: pulse 1.5s infinite; border-radius: 8px; color: transparent !important; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        /* Custom Tabs */
-        .tab-active { border-bottom: 2px solid var(--arc-blue); color: white; }
-        .tab-inactive { color: #6b7280; }
-        .hidden-tab { display: none; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #000; color: #fff; -webkit-font-smoothing: antialiased; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .arc-gradient { background: linear-gradient(135deg, #00FFA3 0%, #0075FF 100%); transition: 0.3s; }
+        .arc-gradient:active { transform: scale(0.95); opacity: 0.8; }
+        .shimmer { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
     </style>
 </head>
-<body class="p-4 flex flex-col items-center min-h-screen">
+<body class="flex flex-col items-center justify-center min-h-screen p-6">
 
-    <div class="w-full max-w-md flex justify-between items-center mt-2">
-        <h1 class="text-2xl font-bold tracking-wider">ArcVault</h1>
-        <div class="flex gap-2 items-center">
-            <button onclick="toggleZenMode()" id="zen-btn" class="p-2 bg-gray-900 rounded-full text-xs text-gray-400 border border-gray-800 transition">🎵 Zen: Off</button>
-            <div class="px-3 py-1 bg-gray-800 rounded-full text-xs text-gray-400">Q-Ready</div>
+    <div id="auth-ui" class="w-full max-w-md text-center">
+        <div class="mb-10">
+            <h1 class="text-5xl font-extrabold tracking-tighter italic arc-gradient bg-clip-text text-transparent">ArcVault</h1>
+            <p class="text-gray-500 font-semibold uppercase tracking-widest text-[10px] mt-2">Modular Social Infrastructure</p>
         </div>
-    </div>
-
-    <div class="glass-card w-full max-w-md mt-6 p-6 flex flex-col items-center shadow-lg shadow-blue-900/10">
-        <p class="text-gray-400 text-sm">Total USDC Balance</p>
-        <h2 id="main-balance" class="text-5xl font-bold mt-2 usdc-glow">$1,250.00</h2>
-        <div class="mt-4 flex gap-3 w-full justify-center">
-            <span class="px-3 py-1 bg-blue-900/30 text-blue-400 rounded-full text-xs border border-blue-900/50">Circle MPC</span>
-            <span class="px-3 py-1 bg-yellow-900/30 text-yellow-500 rounded-full text-xs border border-yellow-900/50">+4.5% USYC Yield</span>
-        </div>
-    </div>
-
-    <div class="w-full max-w-md flex justify-around mt-8 border-b border-gray-800 pb-2">
-        <button onclick="switchTab('send')" id="tab-send" class="pb-2 font-semibold tab-active transition">Send / Swap</button>
-        <button onclick="switchTab('agent')" id="tab-agent" class="pb-2 font-semibold tab-inactive transition">ERC-8183 Agents</button>
-    </div>
-
-    <div id="view-send" class="w-full max-w-md mt-6 space-y-5">
-        <div>
-            <label class="text-xs text-gray-400 ml-1">Omni-Name Routing (@name, fc:name, .eth, .base.eth)</label>
-            <input type="text" placeholder="@pawansatoshi" class="w-full mt-1 p-4 bg-gray-900 border border-gray-800 rounded-xl focus:outline-none focus:border-blue-500 text-white transition">
-        </div>
-        <div>
-            <label class="text-xs text-gray-400 ml-1">Amount (Auto-converts 6 to 18 decimals for Gas)</label>
-            <input type="number" id="amount-input" step="0.000001" placeholder="0.00" class="w-full mt-1 p-4 bg-gray-900 border border-gray-800 rounded-xl focus:outline-none focus:border-blue-500 text-white transition" oninput="limitDecimals(this)">
-            <p id="error-text" class="text-red-500 text-xs mt-1 hidden ml-1">Maximum 6 decimal places allowed.</p>
-        </div>
-        <button id="send-btn" onclick="executeTransaction('send-btn', 'main-balance', '$1,150.00', 'Sent Successfully!')" class="w-full mt-2 p-4 rounded-xl text-white font-bold transition-all shadow-lg shadow-blue-900/40" style="background-color: var(--arc-blue);">
-            Tap & Hold to Send Securely
-        </button>
-        <p class="text-center text-xs text-gray-500 mt-2">Network Fee: Paid via Paymaster (Invisible Gas)</p>
-    </div>
-
-    <div id="view-agent" class="w-full max-w-md mt-6 space-y-5 hidden-tab">
-        <div class="p-4 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-between">
-            <div>
-                <h3 class="font-bold text-sm text-white">Openclaw Swarm #42</h3>
-                <p class="text-xs text-gray-400">Moltbook Orchestrator</p>
-            </div>
-            <span class="px-2 py-1 bg-green-900/30 text-green-400 rounded text-xs border border-green-900/50">Verified</span>
-        </div>
-        <div>
-            <label class="text-xs text-gray-400 ml-1">Job Escrow Limit (USDC to USYC Route)</label>
-            <input type="number" placeholder="50.00" class="w-full mt-1 p-4 bg-gray-900 border border-gray-800 rounded-xl focus:outline-none focus:border-blue-500 text-white transition">
-        </div>
-        <button id="agent-btn" onclick="executeTransaction('agent-btn', 'main-balance', '$1,200.00', 'Agent Escrow Funded!')" class="w-full mt-2 p-4 rounded-xl text-black font-bold transition-all shadow-lg" style="background-color: var(--usyc-gold);">
-            Authorize Agent Spending Limit
-        </button>
-    </div>
-
-    <div class="mt-auto pt-8 pb-4 flex items-center gap-2 opacity-50">
-        <div class="w-2 h-2 rounded-full" style="background-color: var(--circle-blue); box-shadow: 0 0 8px var(--circle-blue);"></div>
-        <span class="text-xs text-gray-400 tracking-widest uppercase">Secured by Circle MPC</span>
-    </div>
-
-    <script>
-        // AUDIO ENGINE (Zero Cost, Web Audio API)
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let zenOscillator = null;
-        let isZenMode = false;
-
-        function playSuccessChime() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            // Premium double-chime (Apple Pay style)
-            const playNote = (freq, startTime, duration) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, startTime);
-                gain.gain.setValueAtTime(0, startTime);
-                gain.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
-                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(startTime);
-                osc.stop(startTime + duration);
-            };
-            const now = audioCtx.currentTime;
-            playNote(880, now, 0.3);       // High A
-            playNote(1108.73, now + 0.15, 0.5); // High C#
-        }
-
-        function toggleZenMode() {
-            const btn = document.getElementById('zen-btn');
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            if (isZenMode) {
-                if (zenOscillator) zenOscillator.stop();
-                btn.innerHTML = "🎵 Zen: Off";
-                btn.classList.remove('text-blue-400', 'border-blue-800');
-                btn.classList.add('text-gray-400', 'border-gray-800');
-                isZenMode = false;
-            } else {
-                // Creates a deep, relaxing 432Hz ambient drone
-                zenOscillator = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                zenOscillator.type = 'sine';
-                zenOscillator.frequency.value = 108; // Low, relaxing frequency
-                gain.gain.value = 0.05; // Very quiet background
-                zenOscillator.connect(gain);
-                gain.connect(audioCtx.destination);
-                zenOscillator.start();
-                
-                btn.innerHTML = "🎶 Zen: On";
-                btn.classList.remove('text-gray-400', 'border-gray-800');
-                btn.classList.add('text-blue-400', 'border-blue-800');
-                isZenMode = true;
-            }
-        }
-
-        // UI LOGIC
-        function switchTab(tab) {
-            const sendView = document.getElementById('view-send');
-            const agentView = document.getElementById('view-agent');
-            const sendTab = document.getElementById('tab-send');
-            const agentTab = document.getElementById('tab-agent');
-
-            if (tab === 'send') {
-                sendView.classList.remove('hidden-tab');
-                agentView.classList.add('hidden-tab');
-                sendTab.className = "pb-2 font-semibold tab-active transition";
-                agentTab.className = "pb-2 font-semibold tab-inactive transition";
-            } else {
-                sendView.classList.add('hidden-tab');
-                agentView.classList.remove('hidden-tab');
-                sendTab.className = "pb-2 font-semibold tab-inactive transition";
-                agentTab.className = "pb-2 font-semibold tab-active transition border-yellow-500";
-            }
-        }
-
-        function limitDecimals(input) {
-            const errorText = document.getElementById('error-text');
-            if (input.value.includes('.')) {
-                const decimals = input.value.split('.')[1];
-                if (decimals.length > 6) {
-                    input.value = parseFloat(input.value).toFixed(6);
-                    errorText.classList.remove('hidden');
-                } else {
-                    errorText.classList.add('hidden');
-                }
-            }
-        }
-
-        function executeTransaction(btnId, balanceId, newBalance, successMsg) {
-            const btn = document.getElementById(btnId);
-            const balance = document.getElementById(balanceId);
-            
-            // Initial Haptic feedback
-            if (navigator.vibrate) navigator.vibrate(50); 
-            
-            // Loading State (1-Click Batching Simulation)
-            const originalColor = btn.style.backgroundColor;
-            btn.innerHTML = "Authenticating via MPC...";
-            btn.style.opacity = "0.7";
-            balance.classList.add('skeleton'); 
-            
-            setTimeout(() => {
-                // Success State!
-                if (navigator.vibrate) navigator.vibrate([50, 50, 50]); 
-                playSuccessChime(); // Play the Web Audio API sound
-                
-                btn.innerHTML = successMsg;
-                btn.style.backgroundColor = "var(--success-green)"; 
-                btn.style.color = "white";
-                balance.classList.remove('skeleton');
-                balance.innerHTML = newBalance; 
-                
-                // Reset button after 3 seconds
-                setTimeout(() => {
-                    btn.innerHTML = btnId === 'send-btn' ? "Tap & Hold to Send Securely" : "Authorize Agent Spending Limit";
-                    btn.style.backgroundColor = originalColor;
-                    btn.style.opacity = "1";
-                    if(btnId === 'agent-btn') btn.style.color = "black";
-                }, 3000);
-            }, 2000);
-        }
         
-        // PWA Setup
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+        <div class="glass rounded-[32px] p-8 space-y-4 shadow-2xl">
+            <button onclick="login('google')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 hover:bg-white/5 active:scale-95 transition-all">
+                <span class="font-bold">Sign in with Google</span>
+            </button>
+            <button onclick="login('twitter')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 hover:bg-white/5 active:scale-95 transition-all">
+                <span class="font-bold">Sign in with X</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="wallet-ui" class="hidden w-full max-w-md space-y-6">
+        <div class="glass rounded-[45px] p-10 text-center relative overflow-hidden shadow-2xl">
+            <div class="absolute top-6 right-6"><span class="text-[9px] arc-gradient px-3 py-1 rounded-full text-black font-extrabold tracking-tighter">MODULAR SCA</span></div>
+            <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2">Portfolio Value</p>
+            <h2 class="text-6xl font-extrabold tracking-tighter">$0.00</h2>
+            <div class="mt-6 inline-block glass px-4 py-2 rounded-2xl">
+                <p id="wallet-address" class="text-[10px] text-gray-500 font-mono break-all leading-relaxed">Configuring Smart Account...</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <button class="py-6 arc-gradient text-black font-black rounded-[28px] text-lg shadow-[0_20px_40px_rgba(0,255,163,0.2)]">SEND</button>
+            <button class="py-6 glass font-black rounded-[28px] text-lg uppercase">Receive</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        // 🔥 IMPORTANT: REPLACE THIS WITH YOUR REAL CONFIG FROM FIREBASE CONSOLE
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "arcvault-cc843.firebaseapp.com",
+            projectId: "arcvault-cc843",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        window.login = async (providerName) => {
+            const provider = providerName === 'google' ? new GoogleAuthProvider() : new TwitterAuthProvider();
+            try {
+                const result = await signInWithPopup(auth, provider);
+                showWallet(result.user);
+            } catch (error) {
+                alert("Login Error: " + error.message);
+            }
+        };
+
+        function showWallet(user) {
+            document.getElementById('auth-ui').classList.add('hidden');
+            document.getElementById('wallet-ui').classList.remove('hidden');
+            createModularWallet(user.uid);
+        }
+
+        async function createModularWallet(uid) {
+            try {
+                const res = await fetch('/api/wallet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: uid, action: 'create' })
+                });
+                const data = await res.json();
+                // Circle returns wallet address inside data.data.wallets[0].address
+                if (data.data && data.data.wallets) {
+                    document.getElementById('wallet-address').innerText = data.data.wallets[0].address;
+                }
+            } catch (err) {
+                document.getElementById('wallet-address').innerText = "Error creating wallet. Check Vercel Logs.";
+            }
         }
     </script>
 </body>
