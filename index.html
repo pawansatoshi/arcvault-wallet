@@ -28,10 +28,6 @@
         input, select { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 12px; width: 100%; outline: none; }
         input:focus, select:focus { border-color: var(--arc-main); }
         select option { background: #111; color: #fff; }
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-4 sm:p-8">
@@ -67,15 +63,14 @@
         
         <div class="flex justify-between items-center px-2 mb-2">
             <select id="network-selector" onchange="changeNetwork()" class="bg-transparent border-none text-emerald-400 font-bold text-[11px] uppercase tracking-wider w-auto py-1 px-0 cursor-pointer focus:ring-0">
-                <option value="arc">Arc Testnet (Default)</option>
+                <option value="arc">Arc Testnet</option>
                 <option value="eth">Ethereum Mainnet</option>
-                <option value="base">Base</option>
-                <option value="custom">+ Add Custom Network</option>
+                <option value="base">Base Network</option>
+                <option value="custom">+ Add Custom RPC</option>
             </select>
             
             <div class="flex items-center space-x-4">
                 <button id="music-btn" onclick="toggleMusic()" class="text-lg">🎵</button>
-                <button onclick="openWhitelist()" class="text-lg">📒</button>
                 <button onclick="logoutApp()" class="text-lg text-red-400">🚪</button>
             </div>
         </div>
@@ -87,34 +82,16 @@
                 <p id="wallet-address" class="text-[10px] font-mono text-gray-400 truncate w-full text-left mr-2">Loading vault...</p>
                 <span class="text-xs">📋</span>
             </div>
-            
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="openSendModal()" class="py-4 arc-btn-gradient text-black font-black rounded-[24px] text-sm uppercase">Send</button>
-                <button onclick="openReceiveModal()" class="py-4 glass font-black rounded-[24px] text-sm uppercase hover:bg-white/5">Receive</button>
-            </div>
         </div>
 
         <div class="glass rounded-3xl p-5">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Assets</h3>
-                <button onclick="openAddTokenModal()" class="text-[10px] text-emerald-400 font-bold uppercase hover:text-white">+ Add Token</button>
+                <button onclick="showError('Feature Locked', 'Custom token search requires premium API access.')" class="text-[10px] text-emerald-400 font-bold uppercase hover:text-white">+ Add Token</button>
             </div>
             
-            <div class="flex justify-between items-center p-3 bg-white/5 rounded-2xl mb-2 border border-blue-500/20">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">USDC</div>
-                    <div class="text-left"><p class="text-sm font-bold">USD Coin</p><p class="text-[10px] text-gray-500">Official</p></div>
+            <div id="asset-container" class="space-y-2">
                 </div>
-                <p class="font-mono text-sm">0.00</p>
-            </div>
-            
-            <div class="flex justify-between items-center p-3 bg-white/5 rounded-2xl">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xs">ARC</div>
-                    <div class="text-left"><p class="text-sm font-bold">Arc Network</p><p class="text-[10px] text-gray-500">Native</p></div>
-                </div>
-                <p class="font-mono text-sm">0.00</p>
-            </div>
         </div>
 
         <div class="glass rounded-3xl p-5">
@@ -138,14 +115,14 @@
             <h3 class="text-xl font-black mb-2 text-white">System Error</h3>
             <p id="error-msg" class="text-xs text-red-300 mb-4 bg-red-900/40 p-3 rounded-xl border border-red-500/20"></p>
             <p id="error-solution" class="text-[11px] text-gray-300 mb-6"></p>
-            <button onclick="closeModal('error-modal')" class="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-black rounded-2xl">Acknowledge</button>
+            <button onclick="document.getElementById('error-modal').classList.add('hidden')" class="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-black rounded-2xl">Acknowledge</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut, EmailAuthProvider, linkWithCredential, linkWithPopup, unlink } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI",
@@ -158,7 +135,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- 🗣️ AI VOICE ENGINE WITH MUSIC DUCKING ---
+        // --- 🗣️ AUDIO ENGINE (VOICE + MUSIC DUCKING) ---
         let synth = window.speechSynthesis;
         let isMusicPlaying = true;
         const bgm = document.getElementById('bg-music');
@@ -172,18 +149,14 @@
         window.playCustomVoice = function(text) {
             if (!synth) return;
             synth.cancel(); 
-            
-            // DUCK MUSIC
-            if(isMusicPlaying) bgm.pause();
+            if(isMusicPlaying) bgm.pause(); // Duck music
 
             const msg = new SpeechSynthesisUtterance(text);
             msg.rate = 0.85; msg.pitch = 1.0;
             const voices = synth.getVoices();
             msg.voice = voices.find(v => v.name.includes('Female') || v.name.includes('UK')) || voices[0];
             
-            // RESUME MUSIC ON END
-            msg.onend = () => { if(isMusicPlaying) bgm.play().catch(()=>{}); };
-            
+            msg.onend = () => { if(isMusicPlaying) bgm.play().catch(()=>{}); }; // Resume music
             synth.speak(msg);
         };
 
@@ -194,7 +167,117 @@
             playCustomVoice("System Error. " + msg);
         };
 
-        // --- IDENTITY MANAGEMENT (DYNAMIC BINDING) ---
+        window.copyElement = (id) => { 
+            navigator.clipboard.writeText(document.getElementById(id).innerText); 
+            playCustomVoice("Address copied to clipboard."); 
+        };
+
+        // --- DYNAMIC MULTI-CHAIN ASSETS ---
+        const networkData = {
+            arc: [
+                { symbol: 'USDC', name: 'USD Coin', type: 'Official', icon: '🔵', style: 'text-blue-400 bg-blue-500/20 border-blue-500/20' },
+                { symbol: 'ARC', name: 'Arc Network', type: 'Native', icon: '🟢', style: 'text-emerald-400 bg-emerald-500/20 border-transparent' }
+            ],
+            eth: [
+                { symbol: 'USDC', name: 'USD Coin', type: 'Official', icon: '🔵', style: 'text-blue-400 bg-blue-500/20 border-blue-500/20' },
+                { symbol: 'ETH', name: 'Ethereum', type: 'Native', icon: '🔷', style: 'text-purple-400 bg-purple-500/20 border-transparent' },
+                { symbol: 'WBTC', name: 'Wrapped BTC', type: 'ERC-20', icon: '🟧', style: 'text-orange-400 bg-orange-500/20 border-transparent' }
+            ],
+            base: [
+                { symbol: 'USDC', name: 'USD Coin', type: 'Official', icon: '🔵', style: 'text-blue-400 bg-blue-500/20 border-blue-500/20' },
+                { symbol: 'ETH', name: 'Ethereum', type: 'Native Base', icon: '🔷', style: 'text-purple-400 bg-purple-500/20 border-transparent' },
+                { symbol: 'DEGEN', name: 'Degen', type: 'Base Token', icon: '🎩', style: 'text-purple-300 bg-purple-900/40 border-transparent' }
+            ]
+        };
+
+        window.changeNetwork = () => {
+            const val = document.getElementById('network-selector').value;
+            if(val === 'custom') {
+                showError("Custom RPC Addition Locked.", "This feature requires a premium architect license.");
+                document.getElementById('network-selector').value = 'arc';
+                return;
+            }
+            
+            const networkName = document.getElementById('network-selector').options[document.getElementById('network-selector').selectedIndex].text;
+            playCustomVoice(`Network switched to ${networkName}`);
+            
+            // Re-render asset list dynamically based on selection
+            const container = document.getElementById('asset-container');
+            container.innerHTML = '';
+            
+            networkData[val].forEach(coin => {
+                // First item gets a blue border to highlight USDC default
+                const extraBorder = coin.symbol === 'USDC' ? 'border border-blue-500/20' : '';
+                container.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-white/5 rounded-2xl ${extraBorder}">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full ${coin.style} flex items-center justify-center font-bold text-xs shadow-lg">${coin.icon}</div>
+                            <div class="text-left"><p class="text-sm font-bold text-white">${coin.name}</p><p class="text-[10px] text-gray-500">${coin.type}</p></div>
+                        </div>
+                        <p class="font-mono text-sm font-bold text-gray-300">0.00</p>
+                    </div>
+                `;
+            });
+        };
+
+        // --- FULLY RESTORED AUTHENTICATION ---
+        window.startExperience = () => {
+            document.getElementById('splash-screen').classList.add('hidden');
+            bgm.volume = 0.15;
+            if(isMusicPlaying) bgm.play().catch(()=>{});
+            
+            playCustomVoice("Arc Protocol initialized. Awaiting secure login.");
+            
+            onAuthStateChanged(auth, (user) => {
+                if (user) { showWallet(user); } 
+                else { document.getElementById('auth-ui').classList.remove('hidden'); }
+            });
+        };
+
+        window.login = async (pName) => {
+            playCustomVoice(`Connecting to ${pName}.`);
+            let p = pName === 'google' ? new GoogleAuthProvider() : pName === 'twitter' ? new TwitterAuthProvider() : new GithubAuthProvider();
+            try { 
+                await signInWithPopup(auth, p); 
+                // onAuthStateChanged handles the redirect
+            } catch (e) { showError(e.message, "Try another login method."); }
+        };
+
+        window.signInEmail = async () => {
+            const email = prompt("Enter your Email:");
+            const pw = prompt("Enter your Password:");
+            if (email && pw) {
+                try {
+                    const res = await signInWithEmailAndPassword(auth, email, pw);
+                    if(!res.user.emailVerified) {
+                        showError("Email not verified.", "Check your inbox and click the verification link.");
+                        signOut(auth);
+                    }
+                } catch (e) { showError(e.message, "Ensure email and password are correct."); }
+            }
+        };
+
+        window.signUpEmail = async () => {
+            const email = prompt("Enter a New Email to Sign Up:");
+            const pw = prompt("Create a Secure Password (min 6 chars):");
+            if (email && pw) {
+                try {
+                    const res = await createUserWithEmailAndPassword(auth, email, pw);
+                    await sendEmailVerification(res.user);
+                    playCustomVoice("Registration complete. A verification link has been sent to your email.");
+                    alert("Success! Check your email inbox to verify your account.");
+                    signOut(auth);
+                } catch (e) { showError(e.message, "Password too weak or email in use."); }
+            }
+        };
+
+        window.logoutApp = async () => {
+            await signOut(auth);
+            playCustomVoice("Securely logged out.");
+            location.reload(); 
+        };
+
+        // --- IDENTITY BINDING / UNLINKING ---
         function renderLinkedAccounts() {
             const user = auth.currentUser;
             if (!user) return;
@@ -212,7 +295,7 @@
                             <span class="text-[10px] font-black text-emerald-400 bg-emerald-500/20 px-2 py-1 rounded">${providerName}</span>
                             <span class="text-xs text-gray-300 truncate w-32">${details}</span>
                         </div>
-                        <button onclick="unlinkAccount('${profile.providerId}')" class="text-[10px] bg-red-500/20 text-red-400 px-3 py-1 rounded hover:bg-red-500/40 transition">Disconnect</button>
+                        <button onclick="unlinkAccount('${profile.providerId}')" class="text-[10px] bg-red-500/20 text-red-400 px-3 py-1 rounded hover:bg-red-500/40">Disconnect</button>
                     </div>
                 `;
             });
@@ -228,7 +311,7 @@
                 await unlink(auth.currentUser, providerId);
                 playCustomVoice("Identity layer successfully unlinked.");
                 renderLinkedAccounts();
-            } catch (e) { showError(e.message, "Try refreshing the application."); }
+            } catch (e) { showError(e.message, "Try refreshing the app."); }
         };
 
         window.linkAccount = async (pName) => {
@@ -238,33 +321,31 @@
                 await linkWithPopup(auth.currentUser, p);
                 playCustomVoice(`${pName} successfully bound.`);
                 renderLinkedAccounts();
-            } catch (e) { showError(e.message, "Account may already be linked to another vault."); }
+            } catch (e) { showError("Binding Failed", "Account may already be linked to another vault."); }
         };
 
-        // --- START EXPERIENCE ---
-        window.startExperience = () => {
-            document.getElementById('splash-screen').classList.add('hidden');
-            bgm.volume = 0.15;
-            if(isMusicPlaying) bgm.play().catch(()=>{});
-            
-            playCustomVoice("Arc Protocol initialized. Awaiting secure login.");
-            
-            onAuthStateChanged(auth, (user) => {
-                if (user) { showWallet(user); } 
-                else { document.getElementById('auth-ui').classList.remove('hidden'); }
-            });
+        window.linkEmailAccount = async () => {
+            if (!auth.currentUser) return;
+            const email = prompt("Enter an Email to bind to this vault:");
+            const pw = prompt("Create a password for this Email:");
+            if(email && pw) {
+                try {
+                    playCustomVoice("Requesting email bind.");
+                    const credential = EmailAuthProvider.credential(email, pw);
+                    await linkWithCredential(auth.currentUser, credential);
+                    playCustomVoice("Email successfully bound. You can now use this to log in.");
+                    renderLinkedAccounts();
+                } catch (e) { showError(e.message, "Try a different email."); }
+            }
         };
 
-        // --- AUTH (Abbreviated, utilizes same functions as previous build) ---
-        window.login = async (pName) => { /* logic */ };
-        window.signInEmail = async () => { /* logic */ };
-        window.logoutApp = async () => { await signOut(auth); location.reload(); };
-
-        // --- WALLET INITIALIZER ---
+        // --- WALLET INITIALIZER (DATABASE + CIRCLE) ---
         async function showWallet(user) {
             document.getElementById('auth-ui').classList.add('hidden');
             document.getElementById('wallet-ui').classList.remove('hidden');
-            renderLinkedAccounts(); // Render the bonded identities immediately
+            
+            renderLinkedAccounts(); 
+            changeNetwork(); // Force the asset list to load the default Arc tokens
 
             try {
                 const userRef = doc(db, "users", user.uid);
@@ -277,31 +358,18 @@
                     playCustomVoice("Generating new secure smart account. Please wait.");
                     const res = await fetch('/api/wallet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.uid, action: 'create' }) });
                     const d = await res.json();
+                    
                     if (d.data && d.data.wallets) {
                         const newAddress = d.data.wallets[0].address;
                         await setDoc(userRef, { walletAddress: newAddress }, { merge: true });
                         document.getElementById('wallet-address').innerText = newAddress;
                         playCustomVoice("Vault generated and permanently secured.");
+                    } else {
+                        showError("API Generation Failed", "Check Circle Keys in Vercel.");
                     }
                 }
             } catch (err) { showError("Database connection failed.", "Check Firebase Test Mode."); }
         }
-
-        // --- UI UTILS ---
-        window.copyElement = (id) => { navigator.clipboard.writeText(document.getElementById(id).innerText); playCustomVoice("Copied to clipboard."); };
-        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
-        window.changeNetwork = () => {
-            const val = document.getElementById('network-selector').value;
-            if(val === 'custom') {
-                showError("Custom RPC Addition Locked.", "This feature requires a premium architect license.");
-                document.getElementById('network-selector').value = 'arc';
-            } else {
-                playCustomVoice("Network switched successfully.");
-            }
-        };
-        window.openAddTokenModal = () => {
-            showError("Token Search Locked.", "Official API search requires Mainnet connectivity.");
-        };
     </script>
 </body>
 </html>
