@@ -1,0 +1,29 @@
+export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).end();
+    
+    const API_KEY = process.env.CIRCLE_API_KEY;
+    const { walletId } = req.body;
+
+    if (!walletId) return res.status(400).json({ error: "Missing Wallet ID" });
+
+    try {
+        const response = await fetch(`https://api.circle.com/v1/w3s/wallets/${walletId}/balances`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${API_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return res.status(response.status).json({ error: "Circle Fetch Failed", details: result });
+        }
+
+        return res.status(200).json({ data: result.data });
+
+    } catch (err) {
+        return res.status(500).json({ error: "Server Error", details: err.message });
+    }
+}
