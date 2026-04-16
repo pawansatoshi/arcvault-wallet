@@ -2,217 +2,201 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArcVault | Secure Modular Wallet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>ArcVault | Modular Social Wallet</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
-        :root {
-            --bg: #000000;
-            --card: #121212;
-            --accent: #00d2ff;
-            --success: #3aebaf;
-            --error: #ff4d4d;
-        }
-
-        body {
-            background: var(--bg);
-            color: white;
-            font-family: -apple-system, system-ui, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        :root { --arc-main: #00FFA3; --arc-sec: #0075FF; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #000; 
+            color: #fff; 
+            -webkit-font-smoothing: antialiased;
+            background-image: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #000 60%);
             min-height: 100vh;
-            margin: 0;
         }
-
-        .container { width: 92%; max-width: 400px; }
-
-        .wallet-card {
-            background: var(--card);
-            border-radius: 28px;
-            padding: 35px 20px;
-            border: 1px solid #222;
-            text-align: center;
-            position: relative;
-        }
-
-        .status-badge {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 10px;
-            color: var(--success);
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .status-badge::before {
-            content: "";
-            width: 6px;
-            height: 6px;
-            background: var(--success);
-            border-radius: 50%;
-        }
-
-        .balance-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
-        .balance-amount { font-size: 52px; font-weight: 800; margin: 15px 0; }
-
-        #diagnostic-log {
-            display: none;
-            background: rgba(255, 77, 77, 0.08);
-            border: 1px solid var(--error);
-            border-radius: 14px;
-            padding: 15px;
-            margin-top: 20px;
-            text-align: left;
-            font-family: monospace;
-            font-size: 11px;
-            color: var(--error);
-            word-break: break-all;
-        }
-
-        .address-display {
-            background: rgba(255,255,255,0.03);
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 12px;
-            color: #aaa;
-            margin-top: 20px;
-            border: 1px dashed #333;
-            min-height: 40px;
-        }
-
-        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
-        .btn {
-            padding: 18px;
-            border-radius: 18px;
-            border: none;
-            font-weight: bold;
-            font-size: 15px;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        .btn:active { transform: scale(0.97); }
-        .btn-main { background: linear-gradient(to right, var(--accent), var(--success)); color: #000; }
-        .btn-alt { background: #1a1a1a; color: white; border: 1px solid #333; }
-
-        #auth-btn {
-            background: white; color: black; padding: 12px 24px; 
-            border-radius: 12px; font-weight: 700; margin-top: 30px; 
-            width: 100%; border: none; cursor: pointer;
-        }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .arc-btn-gradient { background: linear-gradient(135deg, var(--arc-main) 0%, var(--arc-sec) 100%); transition: 0.3s cubic-bezier(0.2, 0, 0, 1); }
+        .arc-btn-gradient:active { transform: scale(0.96); filter: brightness(1.1); }
+        .text-gradient { background: linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.5) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Smooth fade-in for OKX/DApp browsers */
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body>
+<body class="flex flex-col items-center justify-center p-4 sm:p-8">
 
-<div class="container">
-    <div class="wallet-card">
-        <div class="status-badge" id="status-tag">ARC NETWORK</div>
-        <div class="balance-label">Smart Account Balance</div>
-        <div class="balance-amount">$0.00</div>
+    <div id="app-header" class="mb-10 text-center fade-in">
+        <h1 class="text-4xl font-extrabold tracking-tighter text-gradient">ArcVault</h1>
+        <p class="text-[10px] uppercase tracking-[0.3em] font-bold text-emerald-400 mt-2">Architect Protocol v1.0</p>
+    </div>
+
+    <div id="auth-ui" class="w-full max-w-sm space-y-4 fade-in">
+        <div class="glass rounded-[38px] p-7 space-y-3 shadow-2xl">
+            
+            <button onclick="login('google')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all group">
+                <span class="font-bold text-sm tracking-tight group-hover:text-white">Sign in with Google</span>
+            </button>
+            
+            <button onclick="login('twitter')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all group">
+                <span class="font-bold text-sm tracking-tight group-hover:text-white text-gray-300">Sign in with X</span>
+            </button>
+
+            <button onclick="login('github')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all group">
+                <span class="font-bold text-sm tracking-tight group-hover:text-white text-gray-400">Developer Login (GitHub)</span>
+            </button>
+
+            <div class="flex items-center space-x-3 py-2">
+                <div class="h-[1px] flex-1 bg-white/10"></div>
+                <span class="text-[9px] font-black text-gray-600 uppercase">OR</span>
+                <div class="h-[1px] flex-1 bg-white/10"></div>
+            </div>
+
+            <button onclick="loginEmailPhone()" class="w-full py-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all">
+                <span class="font-bold text-xs text-emerald-500/80 tracking-widest uppercase">Email or Mobile Number</span>
+            </button>
+        </div>
         
-        <div id="loader-text" style="color: var(--accent); font-size: 12px; font-weight: 600;">System Ready</div>
+        <p class="text-[9px] text-center text-gray-600 px-8 leading-relaxed">
+            By connecting, you agree to the Architect Smart Account Terms & Conditions. No seed phrase required.
+        </p>
+    </div>
 
-        <div id="diagnostic-log">
-            <strong style="color: white;">🛰️ Node Diagnostic:</strong>
-            <div id="diag-msg" style="margin-top: 6px;">Initializing protocol...</div>
+    <div id="wallet-ui" class="hidden w-full max-w-md space-y-6 fade-in">
+        <div class="glass rounded-[48px] p-10 text-center relative overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
+            <div class="absolute top-6 right-8 flex items-center space-x-1">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span class="text-[9px] font-black text-emerald-400 tracking-tighter uppercase">Arc Live</span>
+            </div>
+            
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-3">Modular Smart Account</p>
+            <h2 class="text-6xl font-extrabold tracking-tighter italic mb-8">$0.00</h2>
+            
+            <div id="diagnostic-log" class="hidden mb-4 bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-left font-mono text-[11px] text-red-400 break-all">
+                <strong class="text-white">🛰️ Node Diagnostic:</strong>
+                <div id="diag-msg" class="mt-2">Initializing protocol...</div>
+            </div>
+
+            <div class="bg-black/40 border border-white/5 p-4 rounded-3xl inline-block max-w-full">
+                <p id="wallet-address" class="text-[10px] font-mono text-gray-400 break-all leading-tight">Securing your smart vault...</p>
+            </div>
         </div>
 
-        <div class="address-display" id="wallet-addr">Login to view address</div>
+        <div class="grid grid-cols-2 gap-4">
+            <button class="py-7 arc-btn-gradient text-black font-black rounded-[32px] text-xl shadow-[0_15px_35px_rgba(0,255,163,0.25)] uppercase tracking-tighter">Send</button>
+            <button class="py-7 glass font-black rounded-[32px] text-xl uppercase tracking-tighter">Receive</button>
+        </div>
     </div>
 
-    <div class="btn-row">
-        <button class="btn btn-main">SEND</button>
-        <button class="btn btn-alt">RECEIVE</button>
-    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithPopup, 
+            GoogleAuthProvider, 
+            TwitterAuthProvider, 
+            GithubAuthProvider,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword 
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    <button id="auth-btn" onclick="startLogin()">LOGIN WITH X (TWITTER)</button>
-</div>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI",
+            authDomain: "arcvault-cc843.firebaseapp.com",
+            projectId: "arcvault-cc843",
+            appId: "1:524225470861:web:f69d672925effc78d11dc4"
+        };
 
-<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
 
-<script>
-    // 🛠️ FIREBASE CONFIGURATION (Verified arcvault-cc843)
-    const firebaseConfig = {
-        apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI",
-        authDomain: "arcvault-cc843.firebaseapp.com",
-        projectId: "arcvault-cc843",
-        storageBucket: "arcvault-cc843.appspot.com",
-        messagingSenderId: "524225470861",
-        appId: "1:524225470861:web:f69d672925effc78d11dc4"
-    };
-    
-    firebase.initializeApp(firebaseConfig);
+        // --- Social Auth ---
+        window.login = async (pName) => {
+            let p;
+            if(pName === 'google') p = new GoogleAuthProvider();
+            if(pName === 'twitter') p = new TwitterAuthProvider();
+            if(pName === 'github') p = new GithubAuthProvider();
+            
+            try {
+                const res = await signInWithPopup(auth, p);
+                showWallet(res.user);
+            } catch (e) { alert("Identity Error: " + e.message); }
+        };
 
-    async function startLogin() {
-        const provider = new firebase.auth.TwitterAuthProvider();
-        try {
-            const result = await firebase.auth().signInWithPopup(provider);
-            document.getElementById('auth-btn').style.display = 'none';
-            initArcWallet(result.user);
-        } catch (err) {
-            triggerDiagnostic("Auth Fail", err.message);
-        }
-    }
-
-    async function initArcWallet(user) {
-        const log = document.getElementById('diagnostic-log');
-        const msg = document.getElementById('diag-msg');
-        const loader = document.getElementById('loader-text');
-
-        log.style.display = "block";
-        msg.innerText = "Connecting to Arc Vault Backend via Vercel...";
-        loader.innerText = "Securing Connection...";
-
-        try {
-            const response = await fetch('/api/wallet', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.uid, action: 'create' })
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                console.error("Architect Debug:", result);
-                msg.innerHTML = `
-                    <span style="color:white">HTTP Status:</span> ${response.status}<br>
-                    <span style="color:white">Circle Error Code:</span> ${result.code || 'N/A'}<br>
-                    <span style="color:white">Message:</span> ${result.message || JSON.stringify(result)}
-                `;
-                loader.innerText = "Protocol Connection Error";
-                loader.style.color = "#ff4d4d";
-                return;
+        // --- Email/Mobile Auth ---
+        window.loginEmailPhone = async () => {
+            const input = prompt("Enter Email or Mobile Number (with country code):");
+            const pw = prompt("Enter a secure Password:");
+            if (input && pw) {
+                try {
+                    const res = await signInWithEmailAndPassword(auth, input, pw);
+                    showWallet(res.user);
+                } catch (e) {
+                    if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-email') {
+                        const reg = await createUserWithEmailAndPassword(auth, input, pw);
+                        showWallet(reg.user);
+                    } else { alert("Login failed. Check format."); }
+                }
             }
+        };
 
-            // SUCCESS - Extracting Wallet Data
-            if (result.data && result.data.wallets && result.data.wallets.length > 0) {
-                const address = result.data.wallets[0].address;
-                document.getElementById('wallet-addr').innerText = address;
-                log.style.display = "none";
-                loader.innerText = "ARC LIVE";
-                loader.style.color = "#3aebaf";
-                document.getElementById('status-tag').innerText = "CONNECTED";
-            } else {
-                triggerDiagnostic("Malformed Data", "Response received but no address found.");
-            }
-
-        } catch (err) {
-            triggerDiagnostic("Network Crash", err.message);
+        function showWallet(user) {
+            document.getElementById('auth-ui').classList.add('hidden');
+            document.getElementById('app-header').classList.add('hidden');
+            document.getElementById('wallet-ui').classList.remove('hidden');
+            createModularWallet(user.uid);
         }
-    }
 
-    function triggerDiagnostic(type, text) {
-        const log = document.getElementById('diagnostic-log');
-        const msg = document.getElementById('diag-msg');
-        log.style.display = "block";
-        msg.innerHTML = `<strong>${type}:</strong> ${text}`;
-    }
-</script>
+        async function createModularWallet(uid) {
+            const log = document.getElementById('diagnostic-log');
+            const msg = document.getElementById('diag-msg');
+            const addressBox = document.getElementById('wallet-address');
 
+            // Show diagnostic log initially
+            log.classList.remove('hidden');
+            msg.innerText = "Connecting to Arc Vault Backend via Vercel...";
+            addressBox.innerText = "Processing configuration...";
+
+            try {
+                const res = await fetch('/api/wallet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: uid, action: 'create' })
+                });
+                
+                const d = await res.json();
+                
+                // CATCH THE CIRCLE API ERROR
+                if (!res.ok) {
+                    console.error("Architect Debug:", d);
+                    msg.innerHTML = `
+                        <span style="color:#fff">HTTP Status:</span> ${res.status}<br>
+                        <span style="color:#fff">Circle Code:</span> ${d.code || 'N/A'}<br>
+                        <span style="color:#fff">Message:</span> ${d.message || JSON.stringify(d)}
+                    `;
+                    addressBox.innerText = "Protocol Connection Error";
+                    addressBox.classList.replace('text-gray-400', 'text-red-400');
+                    return;
+                }
+
+                // SUCCESS STATE
+                if (d.data && d.data.wallets) {
+                    addressBox.innerText = d.data.wallets[0].address;
+                    addressBox.classList.replace('text-gray-400', 'text-emerald-400');
+                    log.classList.add('hidden'); // Hide the log on success
+                } else {
+                    msg.innerHTML = `<strong>Data Error:</strong> No address found in payload.`;
+                }
+            } catch (err) {
+                msg.innerHTML = `<strong>Network Crash:</strong> ${err.message}`;
+                addressBox.innerText = "Check Vercel Logs.";
+            }
+        }
+    </script>
 </body>
 </html>
