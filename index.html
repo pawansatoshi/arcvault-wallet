@@ -1,1 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>ArcVault | Modular Social Wallet</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --arc-main: #00FFA3; --arc-sec: #0075FF; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #000; 
+            color: #fff; 
+            -webkit-font-smoothing: antialiased;
+            background-image: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #000 60%);
+            min-height: 100vh;
+        }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .arc-btn-gradient { background: linear-gradient(135deg, var(--arc-main) 0%, var(--arc-sec) 100%); transition: 0.3s cubic-bezier(0.2, 0, 0, 1); }
+        .arc-btn-gradient:active { transform: scale(0.96); filter: brightness(1.1); }
+        .text-gradient { background: linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.5) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Smooth fade-in for OKX/DApp browsers */
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4 sm:p-8">
 
+    <div id="app-header" class="mb-10 text-center fade-in">
+        <img src="logo.png" alt="ArcVault Logo" class="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-[0_0_40px_rgba(0,255,163,0.2)]">
+        <h1 class="text-4xl font-extrabold tracking-tighter text-gradient">ArcVault</h1>
+        <p class="text-[10px] uppercase tracking-[0.3em] font-bold text-emerald-400 mt-2">Architect Protocol v1.0</p>
+    </div>
+
+    <div id="auth-ui" class="w-full max-w-sm space-y-4 fade-in">
+        <div class="glass rounded-[38px] p-7 space-y-3 shadow-2xl">
+            
+            <button onclick="login('google')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all group">
+                <span class="font-bold text-sm tracking-tight group-hover:text-white">Sign in with Google</span>
+            </button>
+            
+            <button onclick="login('twitter')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all group">
+                <span class="font-bold text-sm tracking-tight group-hover:text-white text-gray-300">Sign in with X</span>
+            </button>
+
+            <button onclick="login('github')" class="w-full py-4 glass rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all group">
+                <span class="font-bold text-sm tracking-tight group-hover:text-white text-gray-400">Developer Login (GitHub)</span>
+            </button>
+
+            <div class="flex items-center space-x-3 py-2">
+                <div class="h-[1px] flex-1 bg-white/10"></div>
+                <span class="text-[9px] font-black text-gray-600 uppercase">OR</span>
+                <div class="h-[1px] flex-1 bg-white/10"></div>
+            </div>
+
+            <button onclick="loginEmailPhone()" class="w-full py-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center space-x-3 active:scale-95 transition-all">
+                <span class="font-bold text-xs text-emerald-500/80 tracking-widest uppercase">Email or Mobile Number</span>
+            </button>
+        </div>
+        
+        <p class="text-[9px] text-center text-gray-600 px-8 leading-relaxed">
+            By connecting, you agree to the Architect Smart Account Terms & Conditions. No seed phrase required.
+        </p>
+    </div>
+
+    <div id="wallet-ui" class="hidden w-full max-w-md space-y-6 fade-in">
+        <div class="glass rounded-[48px] p-10 text-center relative overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)]">
+            <div class="absolute top-6 right-8 flex items-center space-x-1">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span class="text-[9px] font-black text-emerald-400 tracking-tighter uppercase">Arc Live</span>
+            </div>
+            
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-3">Modular Smart Account</p>
+            <h2 class="text-6xl font-extrabold tracking-tighter italic mb-8">$0.00</h2>
+            
+            <div class="bg-black/40 border border-white/5 p-4 rounded-3xl inline-block max-w-full">
+                <p id="wallet-address" class="text-[10px] font-mono text-gray-400 break-all leading-tight">Securing your smart vault...</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <button class="py-7 arc-btn-gradient text-black font-black rounded-[32px] text-xl shadow-[0_15px_35px_rgba(0,255,163,0.25)] uppercase tracking-tighter">Send</button>
+            <button class="py-7 glass font-black rounded-[32px] text-xl uppercase tracking-tighter">Receive</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithPopup, 
+            GoogleAuthProvider, 
+            TwitterAuthProvider, 
+            GithubAuthProvider,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword 
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        // CONFIG: Ensure these match your Firebase Project exactly
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI",
+            authDomain: "arcvault-cc843.firebaseapp.com",
+            projectId: "arcvault-cc843",
+            appId: "1:524225470861:web:f69d672925effc78d11dc4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // --- Social Auth ---
+        window.login = async (pName) => {
+            let p;
+            if(pName === 'google') p = new GoogleAuthProvider();
+            if(pName === 'twitter') p = new TwitterAuthProvider();
+            if(pName === 'github') p = new GithubAuthProvider();
+            
+            try {
+                const res = await signInWithPopup(auth, p);
+                showWallet(res.user);
+            } catch (e) { alert("Identity Error: " + e.message); }
+        };
+
+        // --- Email/Mobile Auth ---
+        window.loginEmailPhone = async () => {
+            const input = prompt("Enter Email or Mobile Number (with country code):");
+            const pw = prompt("Enter a secure Password:");
+            if (input && pw) {
+                try {
+                    const res = await signInWithEmailAndPassword(auth, input, pw);
+                    showWallet(res.user);
+                } catch (e) {
+                    if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-email') {
+                        // Attempt to register if not found
+                        const reg = await createUserWithEmailAndPassword(auth, input, pw);
+                        showWallet(reg.user);
+                    } else { alert("Login failed. Check format."); }
+                }
+            }
+        };
+
+        function showWallet(user) {
+            document.getElementById('auth-ui').classList.add('hidden');
+            document.getElementById('app-header').classList.add('hidden');
+            document.getElementById('wallet-ui').classList.remove('hidden');
+            createModularWallet(user.uid);
+        }
+
+        async function createModularWallet(uid) {
+            try {
+                const res = await fetch('/api/wallet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: uid, action: 'create' })
+                });
+                const d = await res.json();
+                if (d.data && d.data.wallets) {
+                    document.getElementById('wallet-address').innerText = d.data.wallets[0].address;
+                } else {
+                    document.getElementById('wallet-address').innerText = "Account Error. Check Circle Config.";
+                }
+            } catch (err) {
+                document.getElementById('wallet-address').innerText = "Network Error. Check Vercel Logs.";
+            }
+        }
+    </script>
+</body>
+</html>
