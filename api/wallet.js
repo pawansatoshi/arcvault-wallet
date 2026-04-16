@@ -1,11 +1,17 @@
 export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    // Standard Headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
     const API_KEY = process.env.CIRCLE_API_KEY;
-    const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
+    const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET; // This MUST be the 684-character code
     const WALLET_SET_ID = process.env.CIRCLE_WALLET_SET_ID;
 
     try {
+        console.log("🛠️ Attempting to contact Circle API...");
+        
         const response = await fetch('https://api.circle.com/v1/w3s/developer/wallets', {
             method: 'POST',
             headers: {
@@ -13,9 +19,8 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${API_KEY}`
             },
             body: JSON.stringify({
-                // Adding Date.now() ensures this is ALWAYS a unique ID
-                idempotencyKey: `arcvault-${Date.now()}`, 
-                entitySecretCiphertext: ENTITY_SECRET, 
+                idempotencyKey: `arc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                entitySecretCiphertext: ENTITY_SECRET,
                 blockchains: ["ARC-TESTNET"],
                 count: 1,
                 walletSetId: WALLET_SET_ID,
@@ -23,17 +28,26 @@ export default async function handler(req, res) {
             })
         });
 
-        const data = await response.json();
+        const result = await response.json();
         
-        // This log is your "Black Box." It will tell us exactly why it fails.
-        console.log("Circle Response:", JSON.stringify(data));
+        // This log is the most important part!
+        console.log("🔍 FULL CIRCLE RESPONSE:", JSON.stringify(result));
 
         if (!response.ok) {
-            return res.status(response.status).json(data);
+            return res.status(response.status).json({
+                error: "Circle Rejected Request",
+                details: result.message || result
+            });
         }
 
-        return res.status(200).json(data);
+        // If successful, Circle returns an array. We need to grab the first wallet.
+        const walletAddress = result.data.wallets[0].address;
+        console.log("✅ Wallet Created Successfully:", walletAddress);
+
+        return res.status(200).json({ address: walletAddress });
+
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        console.error("🚨 Server Crash Error:", err.message);
+        return res.status(500).json({ error: "Server Crash", details: err.message });
     }
-                    }
+}
