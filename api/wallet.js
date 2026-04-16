@@ -1,17 +1,17 @@
+import crypto from 'crypto';
+
 export default async function handler(req, res) {
-    // Standard Headers
+    // Standard CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const API_KEY = process.env.CIRCLE_API_KEY;
-    const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET; // This MUST be the 684-character code
+    const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
     const WALLET_SET_ID = process.env.CIRCLE_WALLET_SET_ID;
 
     try {
-        console.log("🛠️ Attempting to contact Circle API...");
-        
         const response = await fetch('https://api.circle.com/v1/w3s/developer/wallets', {
             method: 'POST',
             headers: {
@@ -19,7 +19,8 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${API_KEY}`
             },
             body: JSON.stringify({
-                idempotencyKey: `arc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                // CRITICAL FIX: Generates a mathematically perfect UUID v4
+                idempotencyKey: crypto.randomUUID(), 
                 entitySecretCiphertext: ENTITY_SECRET,
                 blockchains: ["ARC-TESTNET"],
                 count: 1,
@@ -29,25 +30,23 @@ export default async function handler(req, res) {
         });
 
         const result = await response.json();
-        
-        // This log is the most important part!
-        console.log("🔍 FULL CIRCLE RESPONSE:", JSON.stringify(result));
 
         if (!response.ok) {
+            // Passes the EXACT error array to your frontend diagnostic box
             return res.status(response.status).json({
-                error: "Circle Rejected Request",
-                details: result.message || result
+                error: "Circle API Error",
+                details: result.errors ? result.errors : result
             });
         }
 
-        // If successful, Circle returns an array. We need to grab the first wallet.
-        const walletAddress = result.data.wallets[0].address;
-        console.log("✅ Wallet Created Successfully:", walletAddress);
-
-        return res.status(200).json({ address: walletAddress });
+        // Return exact format expected by our new frontend
+        return res.status(200).json({ 
+            data: { 
+                wallets: [{ address: result.data.wallets[0].address }] 
+            } 
+        });
 
     } catch (err) {
-        console.error("🚨 Server Crash Error:", err.message);
         return res.status(500).json({ error: "Server Crash", details: err.message });
     }
 }
