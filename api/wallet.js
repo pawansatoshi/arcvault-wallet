@@ -1,12 +1,11 @@
 export default async function handler(req, res) {
-    // Only allow POST requests for security
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { userId, action } = req.body;
     
-    // These come from your Vercel Environment Variables
+    // Pulling the keys we just fixed in Vercel
     const API_KEY = process.env.CIRCLE_API_KEY;
     const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
     const WALLET_SET_ID = process.env.CIRCLE_WALLET_SET_ID;
@@ -20,12 +19,12 @@ export default async function handler(req, res) {
                     'Authorization': `Bearer ${API_KEY}`
                 },
                 body: JSON.stringify({
-                    idempotencyKey: crypto.randomUUID(), // Ensures one wallet per user
-                    entitySecret: ENTITY_SECRET,
-                    blockchains: ["AVAX-FUJI"], // Arc-compatible Testnet
+                    idempotencyKey: crypto.randomUUID(),
+                    entitySecretCiphertext: ENTITY_SECRET, // Fixed name!
+                    blockchains: ["ARC-TESTNET"],
                     count: 1,
                     walletSetId: WALLET_SET_ID,
-                    accountType: "SCA" // This makes it a MODULAR wallet
+                    accountType: "SCA" 
                 })
             });
 
@@ -33,7 +32,7 @@ export default async function handler(req, res) {
             
             if (!response.ok) {
                 console.error("Circle API Error:", data);
-                return res.status(500).json({ error: data.message || "Failed to create wallet" });
+                return res.status(response.status).json(data);
             }
 
             return res.status(200).json(data);
