@@ -27,8 +27,9 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); }
         
-        input { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 12px; width: 100%; outline: none; }
-        input:focus { border-color: var(--arc-main); }
+        input, select { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 12px; width: 100%; outline: none; }
+        input:focus, select:focus { border-color: var(--arc-main); }
+        select option { background: #111; color: #fff; }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-4 sm:p-8">
@@ -38,6 +39,7 @@
     </audio>
 
     <div id="splash-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black fade-in">
+        <img src="logo.png" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Arc_logo.svg/1024px-Arc_logo.svg.png'" class="w-24 h-24 mb-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,163,0.2)]" alt="ArcVault Logo">
         <h1 class="text-4xl font-extrabold text-gradient mb-8">ArcVault</h1>
         <button onclick="startExperience()" class="py-4 px-10 arc-btn-gradient rounded-full text-black font-black tracking-widest uppercase animate-pulse">
             Initialize
@@ -45,6 +47,7 @@
     </div>
 
     <div id="app-header" class="hidden mb-6 text-center fade-in">
+        <img src="logo.png" onerror="this.style.display='none'" class="w-16 h-16 mx-auto mb-3 rounded-2xl shadow-[0_0_20px_rgba(0,255,163,0.2)]" alt="ArcVault Logo">
         <h1 class="text-3xl font-extrabold tracking-tighter text-gradient">ArcVault</h1>
     </div>
 
@@ -96,19 +99,36 @@
             <button onclick="openSendModal()" class="py-5 arc-btn-gradient text-black font-black rounded-[28px] text-lg uppercase shadow-lg">Send</button>
             <button onclick="openReceiveModal()" class="py-5 glass font-black rounded-[28px] text-lg uppercase">Receive</button>
         </div>
+
+        <div class="glass rounded-3xl p-6 mt-2">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">Security: Bind Accounts</h3>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <button onclick="linkAccount('google')" class="py-2 bg-white/5 rounded-xl text-xs font-bold hover:bg-white/10">Google</button>
+                <button onclick="linkAccount('twitter')" class="py-2 bg-white/5 rounded-xl text-xs font-bold hover:bg-white/10">X (Twitter)</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="linkAccount('github')" class="py-2 bg-white/5 rounded-xl text-xs font-bold hover:bg-white/10">GitHub</button>
+                <button onclick="linkEmailAccount()" class="py-2 bg-white/5 border border-emerald-500/30 rounded-xl text-xs font-bold hover:bg-white/10 text-emerald-400">Email Address</button>
+            </div>
+        </div>
     </div>
 
     <div id="send-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4 fade-in">
         <div class="glass rounded-[38px] p-8 max-w-sm w-full border border-blue-500/30">
             <h3 class="text-xl font-black mb-1 text-white text-center">Send Assets</h3>
-            <p class="text-[10px] text-gray-400 mb-6 text-center">Min amount: 0.01 ARC</p>
+            <p class="text-[10px] text-gray-400 mb-4 text-center">Min amount: 0.01 ARC</p>
             
             <div id="send-form">
-                <label class="text-[10px] text-gray-500 uppercase font-bold mb-1 block">Recipient (0x... or @username)</label>
-                <input type="text" id="send-to" placeholder="e.g. 0x123... or @pawansatoshi" class="mb-4">
+                <label class="text-[10px] text-gray-500 uppercase font-bold mb-1 block">Quick Select</label>
+                <select id="send-contact-picker" onchange="document.getElementById('send-to').value = this.value" class="mb-4 text-xs">
+                    <option value="">-- Choose from Address Book --</option>
+                </select>
+
+                <label class="text-[10px] text-gray-500 uppercase font-bold mb-1 block">Recipient</label>
+                <input type="text" id="send-to" placeholder="0x... or @username or Email" class="mb-4 text-xs">
                 
                 <label class="text-[10px] text-gray-500 uppercase font-bold mb-1 block">Amount</label>
-                <input type="number" id="send-amount" placeholder="0.00" min="0.01" step="0.01" class="mb-6">
+                <input type="number" id="send-amount" placeholder="0.00" min="0.01" step="0.01" class="mb-6 text-xs">
                 
                 <button onclick="executeSend()" class="w-full py-4 arc-btn-gradient text-black font-black rounded-2xl mb-3">CONFIRM TRANSFER</button>
                 <button onclick="closeModal('send-modal')" class="w-full py-3 bg-white/5 rounded-2xl text-xs font-bold">Cancel</button>
@@ -128,16 +148,17 @@
     </div>
 
     <div id="whitelist-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4 fade-in">
-        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-purple-500/30 max-h-[80vh] flex flex-col">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-purple-500/30 max-h-[85vh] flex flex-col">
             <h3 class="text-lg font-black mb-4 text-white text-center">Address Book</h3>
             
-            <div id="whitelist-entries" class="flex-1 overflow-y-auto space-y-2 mb-4 bg-black/30 p-2 rounded-xl min-h-[100px]">
+            <div id="whitelist-entries" class="flex-1 overflow-y-auto space-y-2 mb-4 bg-black/30 p-2 rounded-xl min-h-[120px]">
                 </div>
 
-            <div class="bg-white/5 p-4 rounded-2xl mb-4">
+            <div class="bg-white/5 p-4 rounded-2xl mb-4 border border-white/5">
+                <p class="text-[10px] text-gray-400 font-bold uppercase mb-2">Add New</p>
                 <input type="text" id="wl-name" placeholder="Name (e.g. John)" class="mb-2 text-xs py-2">
                 <input type="text" id="wl-address" placeholder="Address, Email, or X Handle" class="mb-2 text-xs py-2">
-                <button onclick="saveContact()" class="w-full py-2 bg-purple-500/20 text-purple-300 rounded-xl text-xs font-bold border border-purple-500/30">Add Contact +</button>
+                <button onclick="saveContact()" class="w-full py-2 bg-purple-500/20 text-purple-300 rounded-xl text-xs font-bold border border-purple-500/30">Save Contact +</button>
             </div>
 
             <button onclick="closeModal('whitelist-modal')" class="w-full py-3 bg-white/10 rounded-2xl text-xs font-bold">Close</button>
@@ -157,8 +178,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut, EmailAuthProvider, linkWithCredential, linkWithPopup } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI",
@@ -228,7 +249,7 @@
                     await sendEmailVerification(res.user);
                     alert("Success! A free verification link has been sent to your email. Please click it before logging in.");
                     playCustomVoice("Registration complete. Please verify your email before accessing the vault.");
-                    signOut(auth); // Log them out until they verify
+                    signOut(auth);
                 } catch (e) { showError(e.message, "Password might be too weak or email already in use."); }
             }
         };
@@ -236,15 +257,47 @@
         window.logoutApp = async () => {
             await signOut(auth);
             playCustomVoice("Securely logged out.");
-            location.reload(); // Hard reset UI
+            location.reload(); 
+        };
+
+        // --- ACCOUNT BINDING ---
+        window.linkAccount = async (pName) => {
+            if (!auth.currentUser) return;
+            playCustomVoice(`Requesting security bind for ${pName}.`);
+            let p = pName === 'google' ? new GoogleAuthProvider() : pName === 'twitter' ? new TwitterAuthProvider() : new GithubAuthProvider();
+            try {
+                await linkWithPopup(auth.currentUser, p);
+                playCustomVoice(`${pName} successfully bound as a backup recovery method.`);
+                alert("Success! Account linked.");
+            } catch (e) { alert("Failed or already linked to another account."); }
+        };
+
+        window.linkEmailAccount = async () => {
+            if (!auth.currentUser) return;
+            const email = prompt("Enter an Email to bind to this vault:");
+            const pw = prompt("Create a password for this Email:");
+            if(email && pw) {
+                try {
+                    playCustomVoice("Requesting email bind.");
+                    const credential = EmailAuthProvider.credential(email, pw);
+                    await linkWithCredential(auth.currentUser, credential);
+                    playCustomVoice("Email successfully bound. You can now use this to log in.");
+                    alert("Success! You can now sign in with this Email and Password to access this same wallet.");
+                } catch (e) { alert("Error: " + e.message); }
+            }
         };
 
         // --- SEND MODULE ---
-        window.openSendModal = () => {
+        window.openSendModal = async () => {
             document.getElementById('send-modal').classList.remove('hidden');
             document.getElementById('send-form').classList.remove('hidden');
             document.getElementById('tx-success').classList.add('hidden');
+            document.getElementById('send-to').value = "";
+            document.getElementById('send-amount').value = "";
             playCustomVoice("Transfer module ready. Please enter recipient and amount.");
+            
+            // Populate Dropdown
+            await loadContactsIntoPicker();
         };
 
         window.executeSend = () => {
@@ -260,7 +313,6 @@
             playCustomVoice(`Processing transfer of ${amt} assets.`);
             document.getElementById('send-form').classList.add('hidden');
             
-            // Simulate API Delay
             setTimeout(() => {
                 document.getElementById('tx-success').classList.remove('hidden');
                 document.getElementById('tx-id').innerText = "0x" + Math.random().toString(16).slice(2, 40) + "arc" + Date.now();
@@ -281,23 +333,38 @@
             const listDiv = document.getElementById('whitelist-entries');
             listDiv.innerHTML = "";
 
-            if (docSnap.exists() && docSnap.data().contacts) {
+            if (docSnap.exists() && docSnap.data().contacts && docSnap.data().contacts.length > 0) {
                 const contacts = docSnap.data().contacts;
-                if(contacts.length === 0) listDiv.innerHTML = '<p class="text-[10px] text-gray-500 text-center mt-4">No contacts saved.</p>';
-                
                 contacts.forEach(c => {
                     listDiv.innerHTML += `
-                        <div class="bg-white/5 p-2 rounded flex justify-between items-center border border-white/5">
-                            <div>
+                        <div class="bg-white/5 p-3 rounded-xl flex flex-col border border-white/5 mb-2 relative group">
+                            <div class="flex justify-between items-start mb-1">
                                 <p class="text-xs font-bold text-white">${c.name} <span class="text-yellow-400 ml-1">★</span></p>
-                                <p class="text-[9px] text-gray-400 font-mono">${c.address}</p>
+                                <div class="space-x-1">
+                                    <button onclick="editContact('${c.name}', '${c.address}')" class="text-[10px] text-blue-400 hover:text-white">✏️</button>
+                                    <button onclick="deleteContact('${c.name}', '${c.address}')" class="text-[10px] text-red-400 hover:text-white">🗑️</button>
+                                </div>
                             </div>
-                            <button onclick="document.getElementById('send-to').value='${c.address}'; closeModal('whitelist-modal'); openSendModal();" class="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">Send</button>
+                            <p class="text-[9px] text-gray-400 font-mono break-all mb-2">${c.address}</p>
+                            <button onclick="document.getElementById('send-to').value='${c.address}'; closeModal('whitelist-modal'); openSendModal();" class="text-[10px] bg-emerald-500/20 text-emerald-400 py-1 rounded w-full font-bold">Send to this address</button>
                         </div>
                     `;
                 });
             } else {
-                listDiv.innerHTML = '<p class="text-[10px] text-gray-500 text-center mt-4">No contacts saved.</p>';
+                listDiv.innerHTML = '<p class="text-[10px] text-gray-500 text-center mt-6">No contacts saved.</p>';
+            }
+        }
+
+        async function loadContactsIntoPicker() {
+            const uid = auth.currentUser.uid;
+            const docSnap = await getDoc(doc(db, "users", uid));
+            const picker = document.getElementById('send-contact-picker');
+            picker.innerHTML = '<option value="">-- Choose from Address Book --</option>';
+            
+            if (docSnap.exists() && docSnap.data().contacts) {
+                docSnap.data().contacts.forEach(c => {
+                    picker.innerHTML += `<option value="${c.address}">${c.name} (${c.address.substring(0,8)}...)</option>`;
+                });
             }
         }
 
@@ -309,14 +376,38 @@
             const uid = auth.currentUser.uid;
             await updateDoc(doc(db, "users", uid), {
                 contacts: arrayUnion({ name: name, address: addr })
-            }).catch(async (e) => {
-                // If doc doesn't exist yet, create it
+            }).catch(async () => {
                 await setDoc(doc(db, "users", uid), { contacts: [{ name: name, address: addr }] }, { merge: true });
             });
 
             document.getElementById('wl-name').value = "";
             document.getElementById('wl-address').value = "";
-            playCustomVoice("Contact securely saved to your address book.");
+            playCustomVoice("Contact securely saved.");
+            loadContacts();
+        };
+
+        window.deleteContact = async (name, addr) => {
+            if(!confirm(`Delete ${name} from address book?`)) return;
+            const uid = auth.currentUser.uid;
+            await updateDoc(doc(db, "users", uid), {
+                contacts: arrayRemove({ name: name, address: addr })
+            });
+            playCustomVoice("Contact deleted.");
+            loadContacts();
+        };
+
+        window.editContact = async (oldName, oldAddr) => {
+            const newName = prompt("Edit Name:", oldName);
+            const newAddr = prompt("Edit Address/Email/X Handle:", oldAddr);
+            if(!newName || !newAddr) return;
+            
+            const uid = auth.currentUser.uid;
+            const userRef = doc(db, "users", uid);
+            
+            await updateDoc(userRef, { contacts: arrayRemove({ name: oldName, address: oldAddr }) });
+            await updateDoc(userRef, { contacts: arrayUnion({ name: newName, address: newAddr }) });
+            
+            playCustomVoice("Contact updated.");
             loadContacts();
         };
 
@@ -343,7 +434,7 @@
             log.classList.remove('hidden');
             document.getElementById('diag-msg').innerText = "Error: " + msg;
             document.getElementById('diag-solution').innerText = "Architect Solution: " + solution;
-            playCustomVoice("An error occurred. Please check the diagnostic log for a solution.");
+            playCustomVoice("An error occurred. Check the log for a solution.");
         }
 
         // --- INITIALIZE WALLET ---
