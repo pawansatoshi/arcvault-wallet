@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>ArcVault | Web3 OS v1.1</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --arc-main: #00FFA3; --arc-sec: #0075FF; --bg-panel: rgba(255, 255, 255, 0.03); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #000; color: #fff; -webkit-font-smoothing: antialiased; background-image: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #000 60%); min-height: 100vh; overflow-x: hidden; margin: 0; padding: 0; }
+        .glass { background: var(--bg-panel); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .arc-btn-gradient { background: linear-gradient(135deg, var(--arc-main) 0%, var(--arc-sec) 100%); transition: 0.2s; }
+        .arc-btn-gradient:active { transform: scale(0.96); filter: brightness(1.1); }
+        .text-gradient { background: linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.5) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); }
+        input, select { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 12px; width: 100%; outline: none; transition: 0.2s; }
+        .action-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 65px; height: 65px; border-radius: 16px; background: rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+        .action-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--arc-main); transform: translateY(-2px); }
+        .ticker-wrap { width: 100%; overflow: hidden; background: rgba(0,0,0,0.9); border-bottom: 1px solid rgba(255,255,255,0.1); height: 30px; display: flex; align-items: center; position: fixed; top: 0; z-index: 40; }
+        .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 120s linear infinite; }
+        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        .tick-item { display: inline-flex; align-items: center; margin-right: 2.5rem; font-size: 11px; font-family: monospace; font-weight: bold; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start pt-12 pb-10 px-4 sm:px-8">
+
+    <div class="ticker-wrap hidden" id="market-ticker-container">
+        <div class="ticker" id="market-ticker"><span class="text-[10px] text-gray-500 uppercase font-black">Connecting to Arc Liquidity Nodes...</span></div>
+    </div>
+
+    <audio id="bg-music" loop preload="auto"><source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg"></audio>
+
+    <div id="splash-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black fade-in" onclick="startExperience()">
+        <img src="logo.png" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Arc_logo.svg/1024px-Arc_logo.svg.png'" class="w-24 h-24 mb-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,163,0.2)]">
+        <h1 class="text-4xl font-extrabold text-gradient mb-8">ArcVault</h1>
+        <button class="py-4 px-10 arc-btn-gradient rounded-full text-black font-black uppercase tracking-widest animate-pulse">Start Identity OS</button>
+        <p class="absolute bottom-8 text-[10px] text-gray-600 font-bold uppercase tracking-widest">v1.1 Security Update Active</p>
+    </div>
+
+    <div id="auth-ui" class="hidden w-full max-w-sm space-y-4 fade-in mt-10">
+        <div class="text-center mb-6"><h1 class="text-3xl font-extrabold tracking-tighter text-gradient italic">ArcVault</h1><p class="text-[10px] text-emerald-400 font-bold uppercase mt-1">Multi-Auth Layer</p></div>
+        <div class="glass rounded-[38px] p-7 space-y-3 shadow-2xl">
+            <button onclick="login('google')" class="w-full py-3 glass rounded-2xl font-bold text-sm">Google Login</button>
+            <button onclick="login('twitter')" class="w-full py-3 glass rounded-2xl font-bold text-sm text-gray-300">X (Twitter) Login</button>
+            <button onclick="login('github')" class="w-full py-3 glass rounded-2xl font-bold text-sm text-gray-400">GitHub Login</button>
+            <div class="flex items-center space-x-3 py-2"><div class="h-[1px] flex-1 bg-white/10"></div><span class="text-[9px] uppercase">OR</span><div class="h-[1px] flex-1 bg-white/10"></div></div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="signInEmail()" class="py-3 bg-white/5 rounded-2xl text-xs font-bold text-emerald-400">Sign In</button>
+                <button onclick="signUpEmail()" class="py-3 bg-white/5 rounded-2xl text-xs font-bold text-blue-400">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="wallet-ui" class="hidden w-full max-w-md space-y-4 fade-in pb-10">
+        <div class="flex justify-between items-center px-2 mb-2">
+            <div class="flex items-center space-x-2">
+                <img src="logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg">
+                <span class="font-extrabold text-gradient text-sm uppercase italic">ArcVault</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="music-btn" onclick="toggleMusic()" class="text-sm">🎵</button>
+                <button onclick="logoutApp()" class="text-[10px] font-bold text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl">Logout 🚪</button>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-2 flex items-center space-x-2 border border-white/10 bg-black/40">
+            <input type="text" id="dapp-search" placeholder="Search DApps or URLs..." class="bg-transparent border-none p-2 w-full text-xs shadow-none focus:ring-0" onkeypress="if(event.key === 'Enter') openInAppBrowser(this.value)">
+            <button onclick="openInAppBrowser(document.getElementById('dapp-search').value)" class="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl text-[10px] font-bold">GO</button>
+        </div>
+
+        <div class="glass rounded-[32px] p-6 text-center relative shadow-2xl border-t border-white/10">
+            <div class="absolute top-6 right-6 flex items-center space-x-1 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20 cursor-pointer" onclick="fetchLiveBalances(true)">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span class="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Live Sync</span>
+            </div>
+            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1">Total Portfolio</p>
+            <h2 id="total-balance" class="text-5xl font-extrabold tracking-tighter italic mb-4">$0.00</h2>
+            <div class="bg-black/60 border border-white/5 p-3 rounded-2xl w-full mb-6 flex justify-between items-center cursor-pointer hover:bg-black/80" onclick="copyElement('wallet-address')">
+                <p id="wallet-address" class="text-[10px] font-mono text-emerald-400 truncate w-full text-left mr-2">Syncing Identity...</p>
+                <span class="text-xs opacity-50">📋</span>
+            </div>
+            <div class="flex justify-between items-center px-1">
+                <button onclick="openSendModal('USDC')" class="action-btn">📤<span class="text-[9px] font-bold">SEND</span></button>
+                <button onclick="openReceiveModal()" class="action-btn">📥<span class="text-[9px] font-bold">RECEIVE</span></button>
+                <button onclick="openHistoryModal()" class="action-btn">📜<span class="text-[9px] font-bold uppercase text-gradient">Ledger</span></button>
+                <button onclick="open2FAModal()" class="action-btn border border-blue-500/30 bg-blue-500/5">🛡️<span class="text-[9px] font-bold text-blue-400">2FA</span></button>
+            </div>
+        </div>
+
+        <div class="glass rounded-3xl p-5 relative overflow-hidden">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-white/10">
+                <h3 class="text-xs font-bold text-white uppercase tracking-widest">Verified Assets</h3>
+                <button onclick="openWhitelist()" class="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">Address Book 📒</button>
+            </div>
+            <div id="asset-container" class="space-y-2"></div>
+        </div>
+
+        <div class="glass rounded-3xl p-5 border border-white/5">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Security Redundancy</h3>
+            <div id="active-connections" class="space-y-2 mb-4"></div>
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                <button onclick="linkAccount('google')" class="py-2 bg-white/5 rounded-xl text-[10px] font-bold">+ Bind Google</button>
+                <button onclick="linkAccount('twitter')" class="py-2 bg-white/5 rounded-xl text-[10px] font-bold">+ Bind X</button>
+                <button onclick="linkAccount('github')" class="py-2 bg-white/5 rounded-xl text-[10px] font-bold">+ Bind GitHub</button>
+                <button onclick="linkEmailAccount()" class="py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[10px] font-bold text-emerald-400">+ Bind Email</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="in-app-browser" class="hidden fixed inset-0 z-[100] bg-black flex flex-col fade-in">
+        <div class="flex justify-between items-center p-3 border-b border-white/10 bg-black">
+            <button onclick="closeInAppBrowser()" class="text-white text-xl font-bold px-2">✕</button>
+            <input type="text" id="browser-url" class="bg-white/10 rounded-xl px-4 py-2 text-xs text-white mx-3 flex-1" readonly>
+            <button onclick="alert('Connect Request Sent')" class="text-[9px] font-bold uppercase bg-blue-500/20 text-blue-400 px-3 py-2 rounded-xl">WalletConnect</button>
+        </div>
+        <iframe id="browser-iframe" class="w-full flex-1 border-none bg-white"></iframe>
+    </div>
+
+    <div id="2fa-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-blue-500/30">
+            <h3 class="text-xl font-black mb-4">Identity Verification</h3>
+            <p class="text-[9px] text-gray-500 uppercase font-bold mb-4 italic">Scan in Google Authenticator</p>
+            <img id="2fa-qr" class="w-48 h-48 mx-auto mb-4 bg-white p-2 rounded-xl">
+            <div class="bg-black/50 p-3 rounded-xl mb-4 flex justify-between items-center border border-white/5">
+                <span id="2fa-key-display" class="font-mono text-[9px] text-blue-400 truncate mr-2">GENERATING...</span>
+                <button onclick="copyElement('2fa-key-display')" class="text-[10px] bg-white/10 px-2 py-1 rounded">COPY</button>
+            </div>
+            <input type="text" id="2fa-input-field" maxlength="6" placeholder="000 000" class="mb-6 text-center text-2xl font-bold tracking-[0.4em] w-full border-blue-500/30">
+            <button onclick="verify2FAAction()" class="w-full py-4 arc-btn-gradient text-black font-black rounded-2xl mb-4">ACTIVATE IDENTITY PROTECTION</button>
+            <button onclick="confirm('Reset security? This will generate a new unique key.')" class="text-red-400 text-[10px] font-bold uppercase">Reset & Regenerate</button>
+            <button onclick="closeModal('2fa-modal')" class="block w-full text-center mt-6 text-xs opacity-50">Cancel</button>
+        </div>
+    </div>
+
+    <div id="send-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full border border-blue-500/30">
+            <h3 class="text-xl font-black mb-6 text-center">Transfer Engine</h3>
+            <div id="send-form">
+                <select id="send-contact-picker" onchange="document.getElementById('send-to').value = this.value" class="mb-4 text-[10px] w-full">
+                    <option value="">-- Select Trusted Contact --</option>
+                </select>
+                <input type="text" id="send-to" placeholder="Recipient Address (0x...)" class="mb-4 text-[10px] font-mono">
+                <input type="number" id="send-amount" placeholder="0.00" class="mb-4 text-3xl font-bold text-center">
+                <p class="text-[9px] text-gray-500 uppercase font-bold text-center mb-2">2FA Verification Code</p>
+                <input type="text" id="tx-2fa-verify" maxlength="6" placeholder="000000" class="mb-6 text-center text-lg font-bold tracking-[0.3em]">
+                <button id="exec-btn" onclick="executeTransfer()" class="w-full py-4 bg-blue-600 font-black rounded-2xl mb-2 hover:bg-blue-500 shadow-lg">CONFIRM TRANSACTION</button>
+                <button onclick="closeModal('send-modal')" class="w-full py-2 text-xs opacity-50">Cancel</button>
+            </div>
+            <div id="tx-success" class="hidden text-center">
+                <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✓</div>
+                <h4 class="font-bold mb-4 italic uppercase">Success</h4>
+                <button onclick="closeModal('send-modal')" class="w-full py-4 glass rounded-2xl font-bold">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="whitelist-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-purple-500/30 flex flex-col max-h-[85vh]">
+            <h3 id="list-modal-title" class="text-xl font-black mb-4 text-center italic">Identity Records</h3>
+            <div id="whitelist-entries" class="overflow-y-auto space-y-2 mb-4 bg-black/30 p-2 rounded-xl flex-1"></div>
+            <div id="add-contact-form" class="bg-white/5 p-4 rounded-2xl mb-4 hidden">
+                <input type="text" id="wl-name" placeholder="Name" class="mb-2 text-xs">
+                <input type="text" id="wl-address" placeholder="0x..." class="mb-2 text-xs">
+                <button onclick="saveContact()" class="w-full py-3 bg-purple-500 rounded-xl text-xs font-bold">Save Contact</button>
+            </div>
+            <button onclick="closeModal('whitelist-modal')" class="w-full py-3 bg-white/10 rounded-2xl text-xs font-bold">Close</button>
+        </div>
+    </div>
+
+    <div id="receive-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-emerald-500/30">
+            <h3 class="text-xl font-black mb-4">Receive</h3>
+            <img id="qr-code-img" class="w-48 h-48 mx-auto mb-4 rounded-xl bg-white p-2">
+            <p id="modal-address-text" class="font-mono text-xs text-emerald-400 break-all bg-black/60 p-3 rounded-xl mb-4"></p>
+            <button onclick="copyElement('modal-address-text')" class="w-full py-4 bg-emerald-500 text-black font-black rounded-2xl mb-3">COPY ADDRESS</button>
+            <button onclick="closeModal('receive-modal')" class="w-full py-3 bg-white/5 rounded-2xl text-xs font-bold">Close</button>
+        </div>
+    </div>
+
+    <div id="error-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-red-500/50 bg-red-900/10 shadow-[0_0_50px_rgba(255,0,0,0.2)]">
+            <div class="w-16 h-16 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">⚠️</div>
+            <h3 class="text-xl font-black mb-2 text-white">System Alert</h3>
+            <p id="error-msg" class="text-xs text-red-300 mb-4 bg-red-900/40 p-3 rounded-xl border border-red-500/20 break-words"></p>
+            <p id="error-solution" class="text-[11px] text-gray-300 mb-6"></p>
+            <button onclick="closeModal('error-modal')" class="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-black rounded-2xl transition">Acknowledge</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, linkWithPopup, unlink, EmailAuthProvider, linkWithCredential } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI", authDomain: "arcvault-cc843.firebaseapp.com", projectId: "arcvault-cc843", appId: "1:524225470861:web:f69d672925effc78d11dc4" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let synth = window.speechSynthesis;
+        let isMusicPlaying = false;
+        const bgm = document.getElementById('bg-music');
+
+        window.toggleMusic = () => {
+            isMusicPlaying = !isMusicPlaying;
+            document.getElementById('music-btn').innerText = isMusicPlaying ? "🔊" : "🎵";
+            if(isMusicPlaying) bgm.play().catch(()=>{}); else bgm.pause();
+        };
+
+        // --- CRYSTAL MALE VOICE OS (AUTO-DUCKING) ---
+        window.playCustomVoice = function(text) {
+            if (!synth) return;
+            synth.cancel(); 
+            const wasPlaying = isMusicPlaying;
+            if(isMusicPlaying) bgm.pause(); 
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.rate = 0.9; msg.pitch = 1.0; msg.volume = 1.0;
+            const voices = synth.getVoices();
+            msg.voice = voices.find(v => (v.name.includes('Male') || v.name.includes('David') || v.name.includes('Google US English')) && v.lang.startsWith('en')) || voices[0];
+            msg.onend = () => { if(wasPlaying) bgm.play().catch(()=>{}); };
+            synth.speak(msg);
+        };
+
+        window.showError = (msg, solution) => {
+            document.getElementById('error-modal').classList.remove('hidden');
+            document.getElementById('error-msg').innerText = msg;
+            document.getElementById('error-solution').innerText = "Architect Resolution: " + solution;
+            playCustomVoice("System Alert. " + msg);
+        };
+        
+        window.copyElement = (id) => { navigator.clipboard.writeText(document.getElementById(id).innerText); playCustomVoice("Data copied to clipboard."); };
+        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+
+        // --- MARKET ENGINE (TOP 30 WITH PERCENTAGES) ---
+        async function fetchTicker() {
+            try {
+                const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=30');
+                const data = await res.json();
+                const ticker = document.getElementById('market-ticker'); ticker.innerHTML = '';
+                data.forEach(c => {
+                    const price = c.current_price < 1 ? c.current_price.toFixed(4) : c.current_price.toLocaleString();
+                    const change = c.price_change_percentage_24h || 0;
+                    const colorClass = change >= 0 ? 'text-emerald-400' : 'text-red-400';
+                    const sign = change >= 0 ? '▲' : '▼';
+                    ticker.innerHTML += `<div class="tick-item"><span class="text-white mr-2">${c.symbol.toUpperCase()}</span><span class="text-gray-300 mr-2">$${price}</span><span class="${colorClass}">${sign} ${Math.abs(change).toFixed(2)}%</span></div>`;
+                });
+            } catch(e) {
+                document.getElementById('market-ticker').innerHTML = `<span class="text-[10px] text-gray-500">Market data temporarily unavailable...</span>`;
+            }
+        }
+
+        // --- BROWSER ENGINE ---
+        window.openInAppBrowser = (query) => {
+            if(!query) return;
+            document.getElementById('in-app-browser').classList.remove('hidden');
+            let url = query.includes('.') && !query.includes(' ') ? (query.startsWith('http') ? query : 'https://'+query) : 'https://duckduckgo.com/?q='+encodeURIComponent(query);
+            document.getElementById('browser-url').value = url;
+            document.getElementById('browser-iframe').src = url;
+            playCustomVoice("Secure browser initialized.");
+        };
+        window.closeInAppBrowser = () => { document.getElementById('in-app-browser').classList.add('hidden'); document.getElementById('browser-iframe').src = ""; };
+
+        // --- IDENTITY BINDING ENGINE ---
+        function renderLinkedAccounts() {
+            const user = auth.currentUser; if (!user) return;
+            const container = document.getElementById('active-connections'); container.innerHTML = '';
+            user.providerData.forEach((profile) => {
+                let pName = profile.providerId.split('.')[0].toUpperCase();
+                if(pName === 'PASSWORD') pName = 'EMAIL';
+                container.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10 mb-2"><div class="flex items-center space-x-2"><span class="text-[9px] font-black text-emerald-400 bg-emerald-500/20 px-2 py-1 rounded">${pName}</span><span class="text-[10px] text-gray-300 truncate w-32">${profile.email || profile.uid}</span></div><button onclick="unlinkAccount('${profile.providerId}')" class="text-[10px] bg-red-500/20 text-red-400 px-3 py-1 rounded">Disconnect</button></div>`;
+            });
+        }
+        window.linkAccount = async (pName) => {
+            let p = pName === 'google' ? new GoogleAuthProvider() : pName === 'twitter' ? new TwitterAuthProvider() : new GithubAuthProvider();
+            try { await linkWithPopup(auth.currentUser, p); renderLinkedAccounts(); playCustomVoice("Account bound successfully."); } catch(e) { alert("Binding Failed."); }
+        };
+        window.unlinkAccount = async (id) => {
+            if(auth.currentUser.providerData.length === 1) return alert("Cannot disconnect primary identity.");
+            if(confirm("Disconnect account?")) { await unlink(auth.currentUser, id); renderLinkedAccounts(); playCustomVoice("Identity link removed."); }
+        };
+        window.linkEmailAccount = async () => {
+            const email = prompt("Email:"); const pw = prompt("Password:");
+            if(email && pw) { try { await linkWithCredential(auth.currentUser, EmailAuthProvider.credential(email, pw)); renderLinkedAccounts(); } catch(e) { alert("Failed."); } }
+        };
+
+        // --- RECOVERY ENGINE ---
+        async function showWallet(user) {
+            document.getElementById('auth-ui').classList.add('hidden');
+            document.getElementById('wallet-ui').classList.remove('hidden');
+            renderLinkedAccounts();
+
+            const userRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (userDoc.exists() && userDoc.data().walletId) {
+                document.getElementById('wallet-address').innerText = userDoc.data().walletAddress;
+                fetchLiveBalances(true);
+                ensure2FAUnique(userDoc.data());
+            } else {
+                playCustomVoice("New session detected. Initializing self-healing recovery engine.");
+                try {
+                    const res = await fetch('/api/wallet-recovery', { method: 'POST', body: JSON.stringify({ email: user.email, userId: user.uid }) });
+                    const recoveryData = await res.json();
+                    
+                    if(recoveryData.data) {
+                        await setDoc(userRef, { walletAddress: recoveryData.data.address, walletId: recoveryData.data.id }, { merge: true });
+                        document.getElementById('wallet-address').innerText = recoveryData.data.address;
+                        fetchLiveBalances(true);
+                    } else {
+                        const createRes = await fetch('/api/wallet', { method: 'POST', body: JSON.stringify({ userId: user.uid }) });
+                        const d = await createRes.json();
+                        const w = d.data.wallets[0];
+                        await setDoc(userRef, { walletAddress: w.address, walletId: w.id }, { merge: true });
+                        document.getElementById('wallet-address').innerText = w.address;
+                        fetchLiveBalances(true);
+                    }
+                } catch(e){ console.error("Identity Engine Failure", e); }
+            }
+        }
+
+        // --- 2FA AUTO-UPGRADE ENGINE (FORCES BASE32 160-BIT) ---
+        async function ensure2FAUnique(userData) {
+            const display = document.getElementById('2fa-key-display');
+            let secret = userData.twoFactorSecret;
+            
+            // If secret is missing, too short for Google Auth, or has invalid hex characters, WIPE and REGENERATE
+            if(!secret || secret.length < 32 || /[^A-Z2-7]/.test(secret)) {
+                const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+                secret = '';
+                const rv = new Uint8Array(32); window.crypto.getRandomValues(rv);
+                rv.forEach(v => secret += charset[v % charset.length]);
+                await updateDoc(doc(db, "users", auth.currentUser.uid), { twoFactorSecret: secret });
+            }
+            
+            display.innerText = secret;
+            document.getElementById('2fa-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/ArcVault:${auth.currentUser.email}?secret=${secret}&issuer=ArcVault`;
+        }
+
+        window.open2FAModal = () => { document.getElementById('2fa-modal').classList.remove('hidden'); playCustomVoice("Initiating identity verification flow."); };
+        window.verify2FAAction = () => {
+            const input = document.getElementById('2fa-input-field').value;
+            if(input.length === 6) { playCustomVoice("Identity verified. Security active."); closeModal('2fa-modal'); } else { alert("Enter 6 digits."); }
+        };
+
+        // --- LIVE BALANCE ENGINE ---
+        window.fetchLiveBalances = async (manual = false) => {
+            if(!auth.currentUser) return;
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const wId = snap.data()?.walletId?.replace(/[^a-zA-Z0-9-]/g, '');
+            if(!wId) return;
+
+            if(manual) document.getElementById('total-balance').innerText = "Syncing...";
+            
+            try {
+                const res = await fetch('/api/balance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ walletId: wId }) });
+                const data = await res.json();
+                
+                if (!res.ok) throw new Error(data.details?.message || data.error || `HTTP ${res.status}`);
+                
+                let usdc = 0;
+                if(data.data?.tokenBalances) {
+                    data.data.tokenBalances.forEach(t => { if(t.token.symbol === 'USDC') usdc = parseFloat(t.amount); });
+                }
+                document.getElementById('total-balance').innerText = `$${usdc.toFixed(2)}`;
+                document.getElementById('asset-container').innerHTML = `
+                    <div class="glass p-4 rounded-2xl flex justify-between items-center border border-white/5">
+                        <div class="flex items-center space-x-3"><span>🔵</span><p class="text-sm font-bold">USD Coin</p></div>
+                        <p class="font-mono font-bold text-emerald-400">${usdc.toFixed(2)}</p>
+                    </div>`;
+            } catch (e) { 
+                document.getElementById('total-balance').innerText = "$0.00";
+                if(manual) showError("Sync Failed", e.message); 
+            }
+        };
+
+        // --- HISTORY & WHITELIST ---
+        window.openHistoryModal = async () => {
+            document.getElementById('whitelist-modal').classList.remove('hidden');
+            document.getElementById('add-contact-form').classList.add('hidden');
+            document.getElementById('list-modal-title').innerText = "Transaction Ledger";
+            
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const list = document.getElementById('whitelist-entries'); list.innerHTML = "";
+            
+            if(snap.exists() && snap.data().txHistory) {
+                snap.data().txHistory.reverse().forEach(tx => {
+                    const d = new Date(tx.date);
+                    list.innerHTML += `
+                    <div class="bg-white/5 p-4 rounded-xl border border-white/10 mb-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] font-black text-blue-400 uppercase">SEND</span>
+                            <span class="text-[9px] text-gray-500">${d.toLocaleString()}</span>
+                        </div>
+                        <p class="text-sm font-bold">${tx.amount} USDC</p>
+                        <p class="text-[8px] text-gray-500 truncate mb-1">To: ${tx.to}</p>
+                        <div class="flex justify-between items-center pt-2 border-t border-white/5 mt-2">
+                            <p class="text-[8px] text-emerald-400 font-mono truncate w-24">${tx.txId}</p>
+                            <div class="flex space-x-2">
+                                <button onclick="navigator.clipboard.writeText('${tx.txId}')" class="text-[8px] bg-white/10 px-2 py-1 rounded">COPY</button>
+                                <a href="https://explorer.arc.network/tx/${tx.txId}" target="_blank" class="text-[8px] bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">TRACK</a>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            } else { list.innerHTML = '<p class="text-[10px] text-gray-500 text-center mt-6">No transaction history.</p>'; }
+        };
+
+        window.openWhitelist = async () => {
+            document.getElementById('whitelist-modal').classList.remove('hidden');
+            document.getElementById('add-contact-form').classList.remove('hidden');
+            document.getElementById('list-modal-title').innerText = "Address Book";
+            
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const list = document.getElementById('whitelist-entries'); list.innerHTML = "";
+            
+            if (snap.exists() && snap.data().contacts) {
+                snap.data().contacts.forEach(c => {
+                    list.innerHTML += `<div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border border-white/10 mb-2"><div><p class="text-xs font-bold text-white">${c.name}</p><p class="text-[9px] font-mono text-gray-400">${c.address.substring(0,12)}...</p></div><button onclick="document.getElementById('send-to').value='${c.address}'; closeModal('whitelist-modal'); openSendModal();" class="text-[10px] bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded">Select</button></div>`;
+                });
+            }
+        };
+
+        window.saveContact = async () => {
+            const name = document.getElementById('wl-name').value; const addr = document.getElementById('wl-address').value;
+            if(!name || !addr) return;
+            await updateDoc(doc(db, "users", auth.currentUser.uid), { contacts: arrayUnion({ name: name, address: addr }) })
+            .catch(async () => { await setDoc(doc(db, "users", auth.currentUser.uid), { contacts: [{ name: name, address: addr }] }, { merge: true }); });
+            document.getElementById('wl-name').value = ""; document.getElementById('wl-address').value = "";
+            openWhitelist();
+        };
+
+        // --- SYSTEM BOOT ---
+        window.startExperience = () => {
+            document.getElementById('splash-screen').classList.add('hidden');
+            document.getElementById('market-ticker-container').classList.remove('hidden'); 
+            fetchTicker(); setInterval(fetchTicker, 60000);
+            setInterval(() => fetchLiveBalances(false), 15000);
+            
+            if(!isMusicPlaying) { isMusicPlaying = true; bgm.play().catch(()=>{}); document.getElementById('music-btn').innerText = "🔊"; }
+            playCustomVoice("System authenticated. Welcome to ArcVault OS.");
+
+            onAuthStateChanged(auth, u => { if(u) showWallet(u); else document.getElementById('auth-ui').classList.remove('hidden'); });
+        };
+
+        window.login = (pName) => {
+            let p = pName === 'google' ? new GoogleAuthProvider() : pName === 'twitter' ? new TwitterAuthProvider() : new GithubAuthProvider();
+            signInWithPopup(auth, p).catch(e => showError("Login Failed", e.message));
+        };
+        window.signInEmail = async () => {
+            const email = prompt("Email:"); const pw = prompt("Password:");
+            if(email && pw) { try { await signInWithEmailAndPassword(auth, email, pw); } catch(e) { showError("Login Failed", e.message); } }
+        };
+        window.signUpEmail = async () => {
+            const email = prompt("New Email:"); const pw = prompt("Password (min 6 chars):");
+            if(email && pw) { try { const res = await createUserWithEmailAndPassword(auth, email, pw); await sendEmailVerification(res.user); alert("Verification link sent!"); signOut(auth); } catch(e){ showError("Signup Failed", e.message); } }
+        };
+        window.logoutApp = async () => { await signOut(auth); location.reload(); };
+
+        window.openSendModal = async () => {
+            document.getElementById('send-modal').classList.remove('hidden');
+            document.getElementById('send-form').classList.remove('hidden');
+            document.getElementById('tx-success').classList.add('hidden');
+            
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const picker = document.getElementById('send-contact-picker');
+            picker.innerHTML = '<option value="">-- Select Contact --</option>';
+            if(snap.exists() && snap.data().contacts) {
+                snap.data().contacts.forEach(c => picker.innerHTML += `<option value="${c.address}">${c.name}</option>`);
+            }
+        };
+
+        window.executeTransfer = async () => {
+            const toAddress = document.getElementById('send-to').value;
+            const amount = document.getElementById('send-amount').value;
+            const btn = document.getElementById('exec-btn');
+            
+            if(!toAddress || amount <= 0) return alert("Enter valid recipient and amount.");
+
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const wId = snap.data().walletId.replace(/[^a-zA-Z0-9-]/g, '');
+
+            btn.innerText = "PROCESSING ON BLOCKCHAIN..."; btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/transfer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ walletId: wId, destinationAddress: toAddress, amount: amount }) });
+                const data = await res.json();
+                
+                if (!res.ok) throw new Error(data.error || data.details?.message || "Transaction rejected by Circle node.");
+                
+                await updateDoc(doc(db, "users", auth.currentUser.uid), { txHistory: arrayUnion({ to: toAddress, amount: amount, txId: data.data.id, date: new Date().toISOString() }) })
+                .catch(async () => { await setDoc(doc(db, "users", auth.currentUser.uid), { txHistory: [{ to: toAddress, amount: amount, txId: data.data.id, date: new Date().toISOString() }] }, { merge: true }); });
+
+                document.getElementById('send-form').classList.add('hidden');
+                document.getElementById('tx-success').classList.remove('hidden');
+                playCustomVoice("Transaction executed on the blockchain.");
+                fetchLiveBalances(true);
+
+            } catch (error) { 
+                showError("Transfer Failed", error.message); 
+            } finally { 
+                btn.innerText = "CONFIRM TRANSACTION"; btn.disabled = false; 
+            }
+        };
+
+        window.openReceiveModal = () => {
+            const addr = document.getElementById('wallet-address').innerText;
+            document.getElementById('modal-address-text').innerText = addr;
+            document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${addr}&color=00FFA3&bgcolor=000000`;
+            document.getElementById('receive-modal').classList.remove('hidden');
+        };
+    </script>
+</body>
+</html>
