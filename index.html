@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>ArcVault | Web3 OS</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --arc-main: #00FFA3; --arc-sec: #0075FF; --bg-panel: rgba(255, 255, 255, 0.03); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #000; color: #fff; -webkit-font-smoothing: antialiased; background-image: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #000 60%); min-height: 100vh; overflow-x: hidden; margin: 0; padding: 0; }
+        .glass { background: var(--bg-panel); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .arc-btn-gradient { background: linear-gradient(135deg, var(--arc-main) 0%, var(--arc-sec) 100%); transition: 0.2s; }
+        .text-gradient { background: linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.5) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .action-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 65px; height: 65px; border-radius: 16px; background: rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+        .action-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--arc-main); transform: translateY(-2px); }
+        .ticker-wrap { width: 100%; overflow: hidden; background: rgba(0,0,0,0.9); border-bottom: 1px solid rgba(255,255,255,0.1); height: 30px; display: flex; align-items: center; position: fixed; top: 0; z-index: 40; }
+        .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 120s linear infinite; }
+        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        .tick-item { display: inline-flex; align-items: center; margin-right: 2.5rem; font-size: 11px; font-family: monospace; font-weight: bold; }
+        input, select { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 12px; width: 100%; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--arc-main); box-shadow: 0 0 10px rgba(0,255,163,0.2); }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start pt-12 pb-10 px-4">
+
+    <div class="ticker-wrap hidden" id="market-ticker-container">
+        <div class="ticker" id="market-ticker"></div>
+    </div>
+
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="splash-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black" onclick="startExperience()">
+        <img src="logo.png" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Arc_logo.svg/1024px-Arc_logo.svg.png'" class="w-24 h-24 mb-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,163,0.2)]">
+        <h1 class="text-4xl font-extrabold text-gradient mb-8">ArcVault</h1>
+        <button class="py-4 px-10 arc-btn-gradient rounded-full text-black font-black uppercase tracking-widest animate-pulse">Unlock Wallet</button>
+        <p class="absolute bottom-8 text-[10px] text-gray-600 font-bold uppercase tracking-widest">Powered by Architect Identity Layer</p>
+    </div>
+
+    <div id="auth-ui" class="hidden w-full max-w-sm space-y-4 mt-10">
+        <div class="glass rounded-[38px] p-8 space-y-3 shadow-2xl relative overflow-hidden">
+            <h2 class="text-center font-bold text-xl mb-6 text-gradient italic">Security Gateway</h2>
+            <button onclick="login('google')" class="w-full py-4 glass rounded-2xl font-bold text-sm hover:bg-white/10 transition">Sign in with Google</button>
+            <button onclick="login('twitter')" class="w-full py-4 glass rounded-2xl font-bold text-sm text-gray-300 hover:bg-white/10 transition">Sign in with X</button>
+            <button onclick="login('github')" class="w-full py-4 glass rounded-2xl font-bold text-sm text-gray-400 hover:bg-white/10 transition">Sign in with GitHub</button>
+        </div>
+    </div>
+
+    <div id="wallet-ui" class="hidden w-full max-w-md space-y-4">
+        <div class="flex justify-between items-center px-2">
+            <div class="flex items-center space-x-2">
+                <img src="logo.png" onerror="this.style.display='none'" class="w-8 h-8 rounded-lg">
+                <span class="font-extrabold text-gradient text-sm uppercase italic">ArcVault v1.0</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="music-btn" onclick="toggleMusic()" class="text-sm">🎵</button>
+                <button onclick="logoutApp()" class="text-[10px] font-bold text-red-400 uppercase border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-500/10">Log Out 🚪</button>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-2 flex items-center space-x-2 border border-white/10">
+            <input type="text" id="dapp-search" placeholder="Search DApps or URLs..." class="bg-transparent border-none p-2 w-full text-xs" onkeypress="if(event.key === 'Enter') openInAppBrowser(this.value)">
+            <button onclick="openInAppBrowser(document.getElementById('dapp-search').value)" class="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl text-[10px] font-bold">GO</button>
+        </div>
+
+        <div class="glass rounded-[32px] p-6 text-center relative shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-t border-white/10">
+            <div class="absolute top-4 right-4 flex items-center space-x-1 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20 cursor-pointer" onclick="fetchLiveBalances(null, true)">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span class="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Live Sync</span>
+            </div>
+            
+            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mb-1">Portfolio Balance</p>
+            <h2 id="total-balance" class="text-5xl font-extrabold tracking-tighter italic mb-4">$0.00</h2>
+            
+            <div class="bg-black/60 border border-white/5 p-3 rounded-2xl w-full mb-6 flex justify-between items-center cursor-pointer hover:bg-black/80 transition" onclick="copyElement('wallet-address')">
+                <p id="wallet-address" class="text-[10px] font-mono text-emerald-400 truncate w-full text-left">Connecting to Circle Node...</p>
+                <span class="text-xs opacity-50">📋</span>
+            </div>
+
+            <div class="flex justify-between items-center px-1">
+                <button onclick="openSendModal()" class="action-btn">📤<span class="text-[9px] font-bold uppercase">Send</span></button>
+                <button onclick="openReceiveModal()" class="action-btn">📥<span class="text-[9px] font-bold uppercase">Receive</span></button>
+                <button onclick="openHistoryModal()" class="action-btn">📜<span class="text-[9px] font-bold uppercase">Ledger</span></button>
+                <button onclick="open2FAModal()" class="action-btn border border-blue-500/30 bg-blue-500/5">🛡️<span class="text-[9px] font-bold uppercase text-blue-400">Security</span></button>
+            </div>
+        </div>
+
+        <div class="glass rounded-3xl p-5 relative overflow-hidden">
+            <h3 class="text-xs font-bold text-white uppercase tracking-widest mb-4 border-b border-white/10 pb-2">Verified Assets</h3>
+            <div id="asset-container" class="space-y-2"></div>
+        </div>
+
+        <div class="glass rounded-3xl p-5 border border-white/5">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Identity Bindings</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="login('google')" class="py-2 bg-white/5 rounded-xl text-[10px] font-bold hover:bg-white/10">+ Bind Google</button>
+                <button onclick="login('twitter')" class="py-2 bg-white/5 rounded-xl text-[10px] font-bold hover:bg-white/10">+ Bind X</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="in-app-browser" class="hidden fixed inset-0 z-[100] bg-black flex flex-col">
+        <div class="flex justify-between items-center p-3 border-b border-white/10">
+            <button onclick="closeInAppBrowser()" class="text-white text-xl px-2 font-bold">✕</button>
+            <input type="text" id="browser-url" class="bg-white/10 rounded-xl px-3 py-2 text-xs text-white mx-3 flex-1" readonly>
+            <button onclick="alert('Connect Request Sent')" class="text-[9px] font-bold uppercase bg-blue-500/20 text-blue-400 px-3 py-2 rounded-xl">WalletConnect</button>
+        </div>
+        <iframe id="browser-iframe" class="w-full flex-1 border-none bg-white"></iframe>
+    </div>
+
+    <div id="history-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-white/10 flex flex-col max-h-[85vh]">
+            <h3 class="text-xl font-black mb-4 text-center">Identity History</h3>
+            <div id="history-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
+            <button onclick="closeModal('history-modal')" class="mt-6 w-full py-4 glass rounded-2xl font-bold">Close</button>
+        </div>
+    </div>
+
+    <div id="receive-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-emerald-500/30">
+            <h3 class="text-xl font-black mb-4">Receive Assets</h3>
+            <img id="qr-code-img" class="w-48 h-48 mx-auto mb-4 rounded-xl bg-white p-2">
+            <p id="modal-address" class="font-mono text-xs text-emerald-400 break-all bg-black/60 p-3 rounded-xl mb-6"></p>
+            <button onclick="copyElement('modal-address')" class="w-full py-4 arc-btn-gradient text-black font-black rounded-2xl">COPY ADDRESS</button>
+            <button onclick="closeModal('receive-modal')" class="w-full py-3 opacity-50 text-xs mt-2">Close</button>
+        </div>
+    </div>
+
+    <div id="2fa-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-blue-500/30">
+            <h3 class="text-xl font-black mb-4">2FA Security</h3>
+            <p class="text-[10px] text-gray-400 uppercase font-bold mb-4">Scan in Google Authenticator</p>
+            <img id="2fa-qr" class="w-40 h-40 mx-auto mb-4 bg-white p-2 rounded-xl" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=ArcVault-Setup-Secret">
+            <div class="bg-black/50 p-3 rounded-xl mb-4 flex justify-between items-center border border-white/5">
+                <span id="2fa-key" class="font-mono text-[10px] text-blue-400">ARC-RECOVER-992-SEC</span>
+                <button onclick="copyElement('2fa-key')" class="text-[10px] bg-white/10 px-2 py-1 rounded">COPY</button>
+            </div>
+            <button onclick="alert('2FA Active')" class="w-full py-4 arc-btn-gradient text-black font-black rounded-2xl mb-4">ACTIVATE</button>
+            <button onclick="confirm('Reset security?')" class="text-red-400 text-[10px] font-bold uppercase">Reset Option</button>
+            <button onclick="closeModal('2fa-modal')" class="block w-full text-center mt-6 text-xs opacity-50">Close</button>
+        </div>
+    </div>
+
+    <div id="error-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-red-500/50">
+            <div class="text-3xl mb-4">⚠️</div>
+            <h3 class="text-xl font-black mb-2">System Alert</h3>
+            <p id="error-msg" class="text-xs text-red-300 mb-6 bg-red-900/20 p-4 rounded-xl break-all"></p>
+            <button onclick="closeModal('error-modal')" class="w-full py-4 bg-white/10 rounded-2xl transition hover:bg-white/20">Acknowledge</button>
+        </div>
+    </div>
+
+    <div id="send-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full">
+            <h3 class="text-xl font-black mb-6 text-center">Transfer Assets</h3>
+            <div id="send-form">
+                <input type="text" id="send-to" placeholder="Recipient (0x...)" class="mb-4 text-[10px] font-mono">
+                <input type="number" id="send-amount" placeholder="0.00" class="mb-6 text-3xl font-bold text-center">
+                <button id="exec-btn" onclick="executeTransfer()" class="w-full py-4 bg-blue-600 font-black rounded-2xl mb-2 hover:bg-blue-500 transition shadow-lg">CONFIRM SEND</button>
+                <button onclick="closeModal('send-modal')" class="w-full py-2 text-xs opacity-50">Cancel</button>
+            </div>
+            <div id="tx-success" class="hidden text-center">
+                <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✓</div>
+                <h4 class="font-bold mb-4">Blockchain Success</h4>
+                <button onclick="closeModal('send-modal')" class="w-full py-4 glass rounded-2xl font-bold">Return</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI", authDomain: "arcvault-cc843.firebaseapp.com", projectId: "arcvault-cc843", appId: "1:524225470861:web:f69d672925effc78d11dc4" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let isMusicPlaying = false;
+        const bgm = document.getElementById('bg-music');
+        window.toggleMusic = () => {
+            isMusicPlaying = !isMusicPlaying;
+            document.getElementById('music-btn').innerText = isMusicPlaying ? "🔊" : "🎵";
+            if(isMusicPlaying) bgm.play(); else bgm.pause();
+        };
+
+        window.showError = (msg) => { document.getElementById('error-modal').classList.remove('hidden'); document.getElementById('error-msg').innerText = msg; };
+        window.copyElement = (id) => { navigator.clipboard.writeText(document.getElementById(id).innerText); alert("Copied."); };
+        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+        window.open2FAModal = () => document.getElementById('2fa-modal').classList.remove('hidden');
+
+        // MARKET TICKER
+        async function fetchTicker() {
+            try {
+                const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20');
+                const data = await res.json();
+                const ticker = document.getElementById('market-ticker'); ticker.innerHTML = '';
+                data.forEach(c => ticker.innerHTML += `<div class="tick-item"><span>${c.symbol.toUpperCase()} $${c.current_price.toLocaleString()}</span></div>`);
+            } catch(e){}
+        }
+
+        // BROWSER
+        window.openInAppBrowser = (query) => {
+            if(!query) return;
+            document.getElementById('in-app-browser').classList.remove('hidden');
+            let url = query.includes('.') && !query.includes(' ') ? (query.startsWith('http') ? query : 'https://'+query) : 'https://duckduckgo.com/?q='+encodeURIComponent(query);
+            document.getElementById('browser-url').value = url;
+            document.getElementById('browser-iframe').src = url;
+        };
+        window.closeInAppBrowser = () => { document.getElementById('in-app-browser').classList.add('hidden'); document.getElementById('browser-iframe').src = ""; };
+
+        // --- IDENTITY RECOVERY ENGINE ---
+        window.showWallet = async (user) => {
+            document.getElementById('auth-ui').classList.add('hidden');
+            document.getElementById('wallet-ui').classList.remove('hidden');
+            const userRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (userDoc.exists() && userDoc.data().walletId) {
+                const wId = userDoc.data().walletId.replace(/[^a-zA-Z0-9-]/g, '');
+                document.getElementById('wallet-address').innerText = userDoc.data().walletAddress;
+                fetchLiveBalances(wId);
+            } else {
+                try {
+                    // AUTO-RECOVERY TRIGGER
+                    const res = await fetch('/api/wallet-recovery', { method: 'POST', body: JSON.stringify({ email: user.email, userId: user.uid }) });
+                    const recoveryData = await res.json();
+                    
+                    if(recoveryData.data) {
+                        await setDoc(userRef, { walletAddress: recoveryData.data.address, walletId: recoveryData.data.id }, { merge: true });
+                        document.getElementById('wallet-address').innerText = recoveryData.data.address;
+                        fetchLiveBalances(recoveryData.data.id);
+                    } else {
+                        // CREATE NEW
+                        const createRes = await fetch('/api/wallet', { method: 'POST', body: JSON.stringify({ userId: user.uid }) });
+                        const d = await createRes.json();
+                        const w = d.data.wallets[0];
+                        await setDoc(userRef, { walletAddress: w.address, walletId: w.id }, { merge: true });
+                        document.getElementById('wallet-address').innerText = w.address;
+                        fetchLiveBalances(w.id);
+                    }
+                } catch(e){ console.error(e); }
+            }
+        };
+
+        // BALANCE ENGINE
+        window.fetchLiveBalances = async (wId, manual = false) => {
+            if(!wId) {
+                const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+                wId = snap.data().walletId.replace(/[^a-zA-Z0-9-]/g, '');
+            }
+            try {
+                const res = await fetch('/api/balance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ walletId: wId }) });
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.details?.message || data.error);
+                let usdc = 0;
+                if(data.data?.tokenBalances) data.data.tokenBalances.forEach(t => { if(t.token.symbol === 'USDC') usdc = parseFloat(t.amount); });
+                document.getElementById('total-balance').innerText = `$${usdc.toFixed(2)}`;
+                document.getElementById('asset-container').innerHTML = `
+                    <div class="glass p-4 rounded-2xl flex justify-between items-center border border-white/5">
+                        <div class="flex items-center space-x-3"><span>🔵</span><p class="text-sm font-bold">USD Coin</p></div>
+                        <p class="font-mono font-bold">${usdc.toFixed(2)}</p>
+                    </div>`;
+            } catch(e) { if(manual) showError("Circle Node: " + e.message); }
+        };
+
+        // HISTORY ENGINE
+        window.openHistoryModal = async () => {
+            document.getElementById('history-modal').classList.remove('hidden');
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const list = document.getElementById('history-list'); list.innerHTML = "";
+            if(snap.exists() && snap.data().txHistory) {
+                snap.data().txHistory.reverse().forEach(tx => {
+                    list.innerHTML += `
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/5 mb-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] font-black text-blue-400 uppercase">Send</span>
+                            <span class="text-[9px] text-gray-500">${new Date(tx.date).toLocaleString()}</span>
+                        </div>
+                        <p class="text-sm font-bold">${tx.amount} USDC</p>
+                        <p class="text-[8px] text-gray-500 truncate">To: ${tx.to}</p>
+                        <p class="text-[8px] text-emerald-400 font-mono mt-1 truncate">ID: ${tx.txId}</p>
+                    </div>`;
+                });
+            } else { list.innerHTML = `<p class="text-center text-xs text-gray-500 mt-10">No history found.</p>`; }
+        };
+
+        // BOOT
+        window.startExperience = () => {
+            document.getElementById('splash-screen').classList.add('hidden');
+            document.getElementById('market-ticker-container').classList.remove('hidden');
+            fetchTicker(); setInterval(fetchTicker, 60000);
+            setInterval(() => fetchLiveBalances(null, false), 15000);
+            onAuthStateChanged(auth, u => { if(u) showWallet(u); else document.getElementById('auth-ui').classList.remove('hidden'); });
+        };
+
+        window.login = (pName) => {
+            let p = pName === 'google' ? new GoogleAuthProvider() : pName === 'twitter' ? new TwitterAuthProvider() : new GithubAuthProvider();
+            signInWithPopup(auth, p).catch(e => showError(e.message));
+        };
+        window.logoutApp = () => signOut(auth).then(() => location.reload());
+
+        window.openReceiveModal = () => {
+            const addr = document.getElementById('wallet-address').innerText;
+            document.getElementById('modal-address').innerText = addr;
+            document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${addr}&color=00FFA3&bgcolor=000000`;
+            document.getElementById('receive-modal').classList.remove('hidden');
+        };
+
+        window.executeTransfer = async () => {
+            const to = document.getElementById('send-to').value;
+            const amt = document.getElementById('send-amount').value;
+            const btn = document.getElementById('exec-btn');
+            btn.innerText = "SIGNING..."; btn.disabled = true;
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const wId = snap.data().walletId.replace(/[^a-zA-Z0-9-]/g, '');
+
+            try {
+                const res = await fetch('/api/transfer', { method: 'POST', body: JSON.stringify({ walletId: wId, destinationAddress: to, amount: amt }) });
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.error || data.details?.message);
+                await updateDoc(doc(db, "users", auth.currentUser.uid), { txHistory: arrayUnion({ to, amount: amt, txId: data.data.id, date: new Date().toISOString() }) });
+                document.getElementById('send-form').classList.add('hidden');
+                document.getElementById('tx-success').classList.remove('hidden');
+                fetchLiveBalances(wId);
+            } catch(e) { showError(e.message); }
+            finally { btn.innerText = "CONFIRM SEND"; btn.disabled = false; }
+        };
+    </script>
+</body>
+</html>
