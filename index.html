@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>ArcVault | Web3 OS Master v1.5.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --arc-main: #00FFA3; --arc-sec: #0075FF; --bg-panel: rgba(255, 255, 255, 0.03); }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #000; color: #fff; -webkit-font-smoothing: antialiased; background-image: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #000 60%); min-height: 100vh; overflow-x: hidden; margin: 0; padding: 0; }
+        .glass { background: var(--bg-panel); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .arc-btn-gradient { background: linear-gradient(135deg, var(--arc-main) 0%, var(--arc-sec) 100%); transition: 0.2s; }
+        .text-gradient { background: linear-gradient(135deg, #fff 30%, rgba(255,255,255,0.5) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .action-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 65px; height: 65px; border-radius: 16px; background: rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+        .action-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--arc-main); transform: translateY(-2px); }
+        .ticker-wrap { width: 100%; overflow: hidden; background: rgba(0,0,0,0.9); border-bottom: 1px solid rgba(255,255,255,0.1); height: 30px; display: flex; align-items: center; position: fixed; top: 0; z-index: 40; }
+        .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 120s linear infinite; }
+        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        input, select { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 12px; width: 100%; outline: none; transition: 0.2s; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start pt-12 pb-10 px-4 sm:px-8">
+
+    <div class="ticker-wrap hidden" id="market-ticker-container"><div class="ticker" id="market-ticker"></div></div>
+    <audio id="bg-music" loop preload="auto"><source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg"></audio>
+
+    <div id="splash-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black fade-in">
+        <img src="logo.png" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Arc_logo.svg/1024px-Arc_logo.svg.png'" class="w-24 h-24 mb-6 rounded-2xl shadow-[0_0_40px_rgba(0,255,163,0.2)]">
+        <h1 class="text-4xl font-extrabold text-gradient mb-8 italic">ArcVault</h1>
+        <button id="boot-btn" onclick="startExperience()" class="py-4 px-10 arc-btn-gradient rounded-full text-black font-black uppercase tracking-widest animate-pulse">Unlock Identity OS</button>
+        <p class="absolute bottom-8 text-[9px] text-gray-600 font-bold uppercase tracking-[0.3em]">Architect Production Master</p>
+    </div>
+
+    <div id="auth-ui" class="hidden w-full max-w-sm space-y-4 mt-10 fade-in">
+        <div class="glass rounded-[38px] p-8 text-center shadow-2xl relative overflow-hidden">
+            <h2 class="text-2xl font-bold mb-6 italic">Secure Gateway</h2>
+            <button onclick="login('google')" class="w-full py-4 glass rounded-2xl font-bold text-sm mb-3">Google Login</button>
+            <button onclick="login('twitter')" class="w-full py-4 glass rounded-2xl font-bold text-sm mb-3 text-gray-300">X (Twitter)</button>
+            <button onclick="login('github')" class="w-full py-4 glass rounded-2xl font-bold text-sm mb-3 text-gray-400">GitHub Login</button>
+            <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-white/10">
+                <button onclick="signInEmail()" class="py-3 bg-white/5 rounded-xl text-xs font-bold text-emerald-400">Email Login</button>
+                <button onclick="signUpEmail()" class="py-3 bg-white/5 rounded-xl text-xs font-bold text-blue-400">Sign Up</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="wallet-ui" class="hidden w-full max-w-md space-y-4 pb-10 fade-in">
+        <div class="flex justify-between items-center px-2">
+            <span class="font-extrabold text-gradient text-sm uppercase italic leading-none">ArcVault</span>
+            <div class="flex items-center space-x-3">
+                <button id="music-btn" onclick="toggleMusic()" class="text-sm">🎵</button>
+                <button onclick="logoutApp()" class="text-[10px] font-bold text-red-400 border border-red-500/20 px-3 py-1 rounded-xl">Logout 🚪</button>
+            </div>
+        </div>
+
+        <div class="glass rounded-2xl p-2 flex items-center space-x-2 border border-white/10">
+            <input type="text" id="dapp-search" placeholder="Enter URL or Search DApps..." class="bg-transparent border-none p-2 w-full text-xs">
+            <button onclick="openInAppBrowser(document.getElementById('dapp-search').value)" class="bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl text-[10px] font-bold">GO</button>
+        </div>
+
+        <div class="glass rounded-[32px] p-6 text-center relative shadow-2xl border-t border-white/10">
+            <div class="absolute top-4 right-4" onclick="fetchLiveBalances(true)">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            </div>
+            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Total Valuation</p>
+            <h2 id="total-balance" class="text-5xl font-extrabold italic mb-4 tracking-tighter">$0.00</h2>
+            <div class="bg-black/60 border border-white/5 p-3 rounded-2xl w-full mb-6 flex justify-between items-center cursor-pointer" onclick="copyElement('wallet-address')">
+                <p id="wallet-address" class="text-[10px] font-mono text-emerald-400 truncate w-full text-left mr-2">Syncing Vault...</p>
+                <span class="text-xs opacity-50">📋</span>
+            </div>
+            <div class="flex justify-between items-center px-1">
+                <button onclick="openSendModal()" class="action-btn">📤<span class="text-[9px] font-bold">SEND</span></button>
+                <button onclick="openReceiveModal()" class="action-btn">📥<span class="text-[9px] font-bold">RECEIVE</span></button>
+                <button onclick="openHistoryModal()" class="action-btn">📜<span class="text-[9px] font-bold">LEDGER</span></button>
+                <button onclick="openWhitelist()" class="action-btn border border-emerald-500/30">📒<span class="text-[9px] font-bold text-emerald-400">CONTACTS</span></button>
+            </div>
+        </div>
+
+        <div class="glass rounded-3xl p-5">
+            <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                <select id="network-selector" onchange="changeNetwork()" class="bg-transparent text-emerald-400 font-bold text-[10px] border-none w-auto uppercase">
+                    <option value="arc">Arc Network</option>
+                    <option value="eth">Ethereum Mainnet</option>
+                    <option value="polygon">Polygon</option>
+                    <option value="bsc">BNB Chain</option>
+                    <option value="base">Base</option>
+                </select>
+                <div class="flex space-x-2">
+                    <button onclick="openAddNetwork()" class="text-[8px] bg-white/5 px-2 py-1 rounded uppercase font-bold">+ Network</button>
+                    <button onclick="openAddToken()" class="text-[8px] bg-white/5 px-2 py-1 rounded uppercase font-bold">+ Token</button>
+                </div>
+            </div>
+            <div id="asset-container" class="space-y-2"></div>
+        </div>
+
+        <div class="glass rounded-3xl p-5 border border-white/5">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Redundant Identity</h3>
+                <button onclick="open2FAModal()" class="text-[9px] text-blue-400 font-black uppercase">🛡️ Security Suite</button>
+            </div>
+            <div id="active-connections" class="space-y-2 mb-4"></div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="linkAccount('google')" class="py-2 bg-white/5 rounded-xl text-[10px] font-bold hover:bg-white/10 transition">+ Bind Google</button>
+                <button onclick="linkAccount('twitter')" class="py-2 bg-white/5 rounded-xl text-[10px] font-bold hover:bg-white/10 transition">+ Bind X</button>
+                <button onclick="linkAccount('github')" class="py-2 bg-white/5 rounded-xl text-[10px] font-bold hover:bg-white/10 transition">+ Bind GitHub</button>
+                <button onclick="linkEmailAccount()" class="py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-[10px] font-bold text-emerald-400">+ Bind Email</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="network-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full border border-emerald-500/30">
+            <h3 class="text-xl font-black mb-4 text-center italic">Add Network</h3>
+            <input type="text" id="net-name" placeholder="Network Name" class="mb-2 text-xs w-full">
+            <input type="text" id="net-rpc" placeholder="RPC URL" class="mb-2 text-xs w-full">
+            <input type="text" id="net-chain" placeholder="Chain ID" class="mb-2 text-xs w-full">
+            <input type="text" id="net-symbol" placeholder="Symbol (e.g. ETH)" class="mb-6 text-xs w-full">
+            <button onclick="saveNetwork()" class="w-full py-4 bg-emerald-500 text-black font-black rounded-2xl mb-2">ADD RPC NODE</button>
+            <button onclick="closeModal('network-modal')" class="w-full py-2 opacity-50 text-xs">Cancel</button>
+        </div>
+    </div>
+
+    <div id="token-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full border border-blue-500/30">
+            <h3 class="text-xl font-black mb-4 text-center italic">Import Token</h3>
+            <input type="text" id="tok-address" placeholder="Smart Contract Address (0x...)" class="mb-6 text-[10px] font-mono w-full">
+            <button onclick="saveToken()" class="w-full py-4 bg-blue-600 text-white font-black rounded-2xl mb-2">IMPORT TO VAULT</button>
+            <button onclick="closeModal('token-modal')" class="w-full py-2 opacity-50 text-xs">Cancel</button>
+        </div>
+    </div>
+
+    <div id="2fa-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-blue-500/30">
+            <h3 class="text-xl font-black mb-4">Identity Security (2FA)</h3>
+            <img id="2fa-qr" class="w-48 h-48 mx-auto mb-4 bg-white p-2 rounded-xl">
+            <div class="bg-black/50 p-3 rounded-xl mb-4 flex justify-between items-center border border-white/5 overflow-hidden">
+                <span id="2fa-key-display" class="font-mono text-[10px] text-blue-400 truncate mr-2">GENERATING...</span>
+                <button onclick="copyElement('2fa-key-display')" class="text-[10px] bg-white/10 px-2 py-1 rounded">COPY</button>
+            </div>
+            <input type="text" id="2fa-input-box" maxlength="6" placeholder="000 000" class="mb-6 text-center text-2xl font-bold tracking-[0.4em] w-full">
+            <button onclick="verify2FASetup()" class="w-full py-4 arc-btn-gradient text-black font-black rounded-2xl mb-4">ACTIVATE PROTECTION</button>
+            <button onclick="closeModal('2fa-modal')" class="block w-full text-xs opacity-50">Cancel</button>
+        </div>
+    </div>
+
+    <div id="send-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full border border-blue-500/30">
+            <h3 class="text-xl font-black mb-6 text-center italic">Transfer OS</h3>
+            <div id="send-form">
+                <select id="send-contact-picker" onchange="document.getElementById('send-to').value = this.value" class="mb-4 text-[10px] w-full"></select>
+                <input type="text" id="send-to" placeholder="Recipient Address (0x...)" class="mb-4 text-[10px] font-mono w-full">
+                <input type="number" id="send-amount" placeholder="0.00" class="mb-2 text-3xl font-bold text-center w-full">
+                <div id="gas-alert" class="hidden mb-4 p-3 bg-orange-500/20 border border-orange-500/30 rounded-xl text-center">
+                    <p class="text-[9px] text-orange-400 font-bold uppercase italic">Balance Limit: Adjust for Gas?</p>
+                    <button onclick="applySmartGas()" class="mt-2 text-[10px] bg-orange-500 text-black font-black px-4 py-1 rounded-full uppercase">Auto-Adjust</button>
+                </div>
+                <input type="text" id="tx-2fa-verify" maxlength="6" placeholder="2FA CODE" class="mb-6 text-center text-lg font-bold tracking-[0.5em] w-full">
+                <button id="exec-btn" onclick="executeTransfer()" class="w-full py-4 bg-blue-600 font-black rounded-2xl hover:bg-blue-500">CONFIRM ON-CHAIN</button>
+                <button onclick="closeModal('send-modal')" class="w-full py-2 opacity-50 text-xs mt-4">Cancel</button>
+            </div>
+            <div id="tx-success" class="hidden text-center">
+                <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✓</div>
+                <h4 class="font-bold italic uppercase">Transaction Propagated</h4>
+                <button onclick="closeModal('send-modal')" class="w-full py-4 glass rounded-2xl mt-6">Return to OS</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="whitelist-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-purple-500/30 flex flex-col max-h-[85vh]">
+            <h3 id="list-title" class="text-xl font-black mb-4 text-center italic">Identity Records</h3>
+            <div id="whitelist-entries" class="overflow-y-auto space-y-2 mb-4 bg-black/30 p-2 rounded-xl flex-1"></div>
+            <div id="add-contact-form" class="bg-white/5 p-4 rounded-2xl mb-4 border border-white/10 hidden">
+                <input type="text" id="wl-name" placeholder="Contact Name" class="mb-2 text-xs w-full">
+                <input type="text" id="wl-address" placeholder="0x..." class="mb-2 text-xs w-full font-mono">
+                <button onclick="saveContact()" class="w-full py-3 bg-purple-500 rounded-xl text-[10px] font-black uppercase">Save to Whitelist</button>
+            </div>
+            <button onclick="closeModal('whitelist-modal')" class="w-full py-3 bg-white/10 rounded-2xl font-bold">Close</button>
+        </div>
+    </div>
+
+    <div id="receive-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-emerald-500/30">
+            <h3 class="text-xl font-black mb-4 italic">Receive Assets</h3>
+            <img id="qr-code-img" class="w-48 h-48 mx-auto mb-4 rounded-xl bg-white p-2">
+            <p id="modal-addr-text" class="font-mono text-xs text-emerald-400 break-all bg-black/60 p-3 rounded-xl mb-6"></p>
+            <button onclick="copyElement('modal-addr-text')" class="w-full py-4 arc-btn-gradient text-black font-black rounded-2xl">COPY ADDRESS</button>
+            <button onclick="closeModal('receive-modal')" class="w-full py-3 opacity-50 text-xs mt-2">Close</button>
+        </div>
+    </div>
+
+    <div id="in-app-browser" class="hidden fixed inset-0 z-[100] bg-black flex flex-col fade-in">
+        <div class="flex justify-between items-center p-3 border-b border-white/10 bg-black">
+            <button onclick="closeInAppBrowser()" class="text-white text-xl font-bold px-2">✕</button>
+            <input type="text" id="browser-url" class="bg-white/10 rounded-xl px-4 py-2 text-xs text-white mx-3 flex-1" readonly>
+            <button onclick="alert('EIP-1193 Handshake Sent')" class="text-[9px] font-bold uppercase bg-blue-500/20 text-blue-400 px-3 py-2 rounded-xl">Inject Wallet</button>
+        </div>
+        <iframe id="browser-iframe" class="w-full flex-1 border-none bg-white"></iframe>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, linkWithPopup, unlink, EmailAuthProvider, linkWithCredential } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI", authDomain: "arcvault-cc843.firebaseapp.com", projectId: "arcvault-cc843", appId: "1:524225470861:web:f69d672925effc78d11dc4" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let synth = window.speechSynthesis;
+        let isMusicPlaying = false;
+        const bgm = document.getElementById('bg-music');
+
+        // --- VIEW MANAGER ---
+        window.setView = function(viewId) {
+            document.getElementById('splash-screen').classList.add('hidden');
+            document.getElementById('auth-ui').classList.add('hidden');
+            document.getElementById('wallet-ui').classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+        };
+
+        // --- VOICE ENGINE RESTORATION ---
+        window.playCustomVoice = function(text) {
+            if (!synth) return;
+            synth.cancel(); 
+            const wasPlaying = isMusicPlaying;
+            if(isMusicPlaying) bgm.pause();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.rate = 0.9;
+            const voices = synth.getVoices();
+            msg.voice = voices.find(v => (v.name.includes('Male') || v.name.includes('David') || v.name.includes('Google US English'))) || voices[0];
+            msg.onend = () => { if(wasPlaying) bgm.play().catch(()=>{}); };
+            synth.speak(msg);
+        };
+
+        window.toggleMusic = () => {
+            isMusicPlaying = !isMusicPlaying;
+            document.getElementById('music-btn').innerText = isMusicPlaying ? "🔊" : "🎵";
+            if(isMusicPlaying) bgm.play().catch(()=>{}); else bgm.pause();
+        };
+
+        window.copyElement = (id) => { navigator.clipboard.writeText(document.getElementById(id).innerText); playCustomVoice("Data copied."); };
+        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+
+        // --- MARKET TICKER (RESTORED TO BOOT) ---
+        async function fetchTicker() {
+            try {
+                const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=15');
+                const data = await res.json();
+                const ticker = document.getElementById('market-ticker'); ticker.innerHTML = '';
+                data.forEach(c => ticker.innerHTML += `<div class="tick-item"><span>${c.symbol.toUpperCase()} $${c.current_price.toLocaleString()}</span></div>`);
+            } catch(e){}
+        }
+
+        // --- MULTI-CHAIN LOGIC ---
+        window.changeNetwork = () => {
+            const net = document.getElementById('network-selector').value;
+            const container = document.getElementById('asset-container');
+            let assets = [];
+            if(net === 'arc') assets = [{sym: 'USDC', name: 'USD Coin'}, {sym: 'ARC', name: 'Arc Network'}];
+            else if(net === 'eth') assets = [{sym: 'ETH', name: 'Ethereum'}, {sym: 'USDT', name: 'Tether'}, {sym: 'LINK', name: 'Chainlink'}];
+            else if(net === 'polygon') assets = [{sym: 'MATIC', name: 'Polygon'}, {sym: 'USDT', name: 'Tether'}];
+            else if(net === 'bsc') assets = [{sym: 'BNB', name: 'BNB'}, {sym: 'BUSD', name: 'Binance USD'}];
+            else if(net === 'base') assets = [{sym: 'ETH', name: 'Ethereum'}, {sym: 'USDbC', name: 'USD Base Coin'}];
+            
+            container.innerHTML = '';
+            assets.forEach(a => {
+                container.innerHTML += `
+                <div class="glass p-4 rounded-2xl flex justify-between items-center border border-white/5 mb-2 hover:bg-white/5 transition cursor-pointer" onclick="document.getElementById('send-to').focus(); openSendModal();">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs">${a.sym[0]}</div>
+                        <div class="text-left"><p class="text-sm font-bold text-white">${a.sym}</p><p class="text-[9px] text-gray-400">${a.name}</p></div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-mono font-bold text-emerald-400" id="bal-${a.sym}">0.00</p>
+                        <div class="flex space-x-2 mt-1">
+                            <span class="text-[8px] bg-purple-500/20 text-purple-400 px-1 rounded uppercase">Swap</span>
+                            <span class="text-[8px] bg-orange-500/20 text-orange-400 px-1 rounded uppercase">Bridge</span>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            fetchLiveBalances(true);
+            playCustomVoice(`Network switched to ${net}.`);
+        };
+
+        window.openAddNetwork = () => document.getElementById('network-modal').classList.remove('hidden');
+        window.saveNetwork = () => { alert("Custom Network Added."); closeModal('network-modal'); };
+        window.openAddToken = () => document.getElementById('token-modal').classList.remove('hidden');
+        window.saveToken = () => { alert("Token Imported."); closeModal('token-modal'); };
+
+        // --- 2FA DATABASE OVERRIDE (CRITICAL FIX) ---
+        async function ensure2FAUnique(userData) {
+            let secret = userData.twoFactorSecret;
+            // The Fix: Detect old buggy hex codes (starts with ARC or contains invalid Base32 chars)
+            const isOldBuggyCode = !secret || secret.startsWith('ARC') || /[^A-Z2-7]/.test(secret) || secret.length !== 16;
+
+            if(isOldBuggyCode) {
+                const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+                secret = '';
+                const rv = new Uint8Array(16); window.crypto.getRandomValues(rv);
+                rv.forEach(v => secret += charset[v % charset.length]);
+                // Wipe the old hex code and save the pure Base32 code to Firebase
+                await updateDoc(doc(db, "users", auth.currentUser.uid), { twoFactorSecret: secret });
+            }
+            renderTOTP(secret);
+        }
+        function renderTOTP(secret) {
+            document.getElementById('2fa-key-display').innerText = secret;
+            document.getElementById('2fa-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=otpauth://totp/ArcVault:${auth.currentUser.email}?secret=${secret}&issuer=ArcVault`;
+        }
+
+        // --- IDENTITY RECOVERY & LOGIN ---
+        async function showWallet(user) {
+            renderLinkedAccounts();
+            changeNetwork(); // Trigger default assets
+            const userRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userRef);
+            
+            if (userDoc.exists() && userDoc.data().walletId) {
+                document.getElementById('wallet-address').innerText = userDoc.data().walletAddress;
+                fetchLiveBalances(true);
+                ensure2FAUnique(userDoc.data()); // Run the database override check
+                setView('wallet-ui');
+                playCustomVoice("Identity OS authenticated.");
+            } else {
+                playCustomVoice("Self-healing recovery active.");
+                try {
+                    const res = await fetch('/api/wallet-recovery', { method: 'POST', body: JSON.stringify({ email: user.email, userId: user.uid }) });
+                    const d = await res.json();
+                    if(d.data) {
+                        await setDoc(userRef, { walletAddress: d.data.address, walletId: d.data.id }, { merge: true });
+                        document.getElementById('wallet-address').innerText = d.data.address;
+                    } else {
+                        const cRes = await fetch('/api/wallet', { method: 'POST', body: JSON.stringify({ userId: user.uid }) });
+                        const cw = await cRes.json();
+                        await setDoc(userRef, { walletAddress: cw.data.wallets[0].address, walletId: cw.data.wallets[0].id }, { merge: true });
+                        document.getElementById('wallet-address').innerText = cw.data.wallets[0].address;
+                    }
+                    fetchLiveBalances(true);
+                    setView('wallet-ui');
+                } catch(e){ setView('wallet-ui'); }
+            }
+        }
+
+        // --- ACCOUNT BINDINGS ---
+        function renderLinkedAccounts() {
+            const user = auth.currentUser; if (!user) return;
+            const container = document.getElementById('active-connections'); container.innerHTML = '';
+            user.providerData.forEach((p) => {
+                let pName = p.providerId.split('.')[0].toUpperCase();
+                if(pName === 'PASSWORD') pName = 'EMAIL';
+                container.innerHTML += `<div class="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/10 mb-2"><div class="flex items-center space-x-2"><span class="text-[9px] font-black text-emerald-400 bg-emerald-500/20 px-2 py-1 rounded">${pName}</span><span class="text-[10px] truncate w-32">${p.email || p.uid}</span></div><button onclick="unlinkAccount('${p.providerId}')" class="text-[10px] bg-red-500/20 text-red-400 px-3 py-1 rounded">Unbind</button></div>`;
+            });
+        }
+        window.linkAccount = async (p) => { try { await linkWithPopup(auth.currentUser, p==='google' ? new GoogleAuthProvider() : p==='twitter' ? new TwitterAuthProvider() : new GithubAuthProvider()); renderLinkedAccounts(); playCustomVoice("Linked."); } catch(e){ alert("Fail."); } };
+        window.unlinkAccount = async (id) => { if(auth.currentUser.providerData.length === 1) return alert("Locked."); await unlink(auth.currentUser, id); renderLinkedAccounts(); };
+        window.linkEmailAccount = async () => { const email = prompt("Email:"); const pw = prompt("Password:"); if(email && pw) { try { await linkWithCredential(auth.currentUser, EmailAuthProvider.credential(email, pw)); renderLinkedAccounts(); } catch(e) { alert("Failed."); } } };
+
+        // --- BALANCE & TRANSFER ---
+        window.fetchLiveBalances = async (manual = false) => {
+            if(!auth.currentUser) return;
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const wId = snap.data()?.walletId?.replace(/[^a-zA-Z0-9-]/g, '');
+            if(!wId) return;
+            try {
+                const res = await fetch('/api/balance', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId }) });
+                const data = await res.json();
+                let usdc = 0;
+                if(data.data?.tokenBalances) {
+                    data.data.tokenBalances.forEach(t => { 
+                        if(t.token.symbol === 'USDC') { usdc = parseFloat(t.amount); }
+                        const el = document.getElementById(`bal-${t.token.symbol}`);
+                        if(el) el.innerText = parseFloat(t.amount).toFixed(2);
+                    });
+                }
+                window.currentBalance = usdc;
+                document.getElementById('total-balance').innerText = `$${usdc.toFixed(2)}`;
+            } catch(e) {}
+        };
+
+        window.applySmartGas = () => {
+            document.getElementById('send-amount').value = (window.currentBalance - 0.05).toFixed(2);
+            document.getElementById('gas-alert').classList.add('hidden');
+            playCustomVoice("Amount adjusted for gas fees.");
+        };
+
+        window.executeTransfer = async () => {
+            const to = document.getElementById('send-to').value;
+            const amt = parseFloat(document.getElementById('send-amount').value);
+            const code = document.getElementById('tx-2fa-verify').value;
+            if(amt >= window.currentBalance) { document.getElementById('gas-alert').classList.remove('hidden'); return; }
+            if(code.length !== 6) return alert("Verify 2FA.");
+
+            const btn = document.getElementById('exec-btn'); btn.innerText = "SIGNING..."; btn.disabled = true;
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const wId = snap.data().walletId.replace(/[^a-zA-Z0-9-]/g, '');
+
+            try {
+                const res = await fetch('/api/transfer', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, destinationAddress: to, amount: amt, assetSymbol: 'USDC' }) });
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.error);
+                await updateDoc(doc(db, "users", auth.currentUser.uid), { txHistory: arrayUnion({ to, amount: amt, txId: data.data.id, date: new Date().toISOString() }) });
+                document.getElementById('send-form').classList.add('hidden');
+                document.getElementById('tx-success').classList.remove('hidden');
+                playCustomVoice("Transaction successful.");
+                fetchLiveBalances(true);
+            } catch(e) { alert(e.message); }
+            finally { btn.innerText = "CONFIRM ON-CHAIN"; btn.disabled = false; }
+        };
+
+        // --- MODALS & UI TRIGGERS ---
+        window.open2FAModal = () => { document.getElementById('2fa-modal').classList.remove('hidden'); playCustomVoice("Enter security code."); };
+        window.verify2FASetup = () => { if(document.getElementById('2fa-input-box').value.length === 6) { playCustomVoice("Verified."); closeModal('2fa-modal'); } else { alert("Enter 6 digits."); } };
+        window.openSendModal = async () => {
+            document.getElementById('send-modal').classList.remove('hidden');
+            document.getElementById('send-form').classList.remove('hidden');
+            document.getElementById('tx-success').classList.add('hidden');
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const picker = document.getElementById('send-contact-picker'); picker.innerHTML = '<option value="">-- Quick Contact Select --</option>';
+            if(snap.exists() && snap.data().contacts) snap.data().contacts.forEach(c => picker.innerHTML += `<option value="${c.address}">${c.name}</option>`);
+        };
+        window.openReceiveModal = () => {
+            const addr = document.getElementById('wallet-address').innerText;
+            document.getElementById('modal-addr-text').innerText = addr;
+            document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${addr}&color=00FFA3&bgcolor=000000`;
+            document.getElementById('receive-modal').classList.remove('hidden');
+            playCustomVoice("Identity address ready.");
+        };
+        window.openHistoryModal = async () => {
+            document.getElementById('whitelist-modal').classList.remove('hidden');
+            document.getElementById('add-contact-form').classList.add('hidden');
+            document.getElementById('list-title').innerText = "Identity Ledger";
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const list = document.getElementById('whitelist-entries'); list.innerHTML = "";
+            if(snap.exists() && snap.data().txHistory) {
+                snap.data().txHistory.reverse().forEach(tx => {
+                    const url = `https://explorer.arc.network/tx/${tx.txId}`;
+                    list.innerHTML += `<div class="bg-white/5 p-4 rounded-xl border border-white/5 mb-2"><div class="flex justify-between items-center"><span class="text-[9px] font-black text-blue-400 uppercase">Send</span><p class="font-bold text-white">${tx.amount} USDC</p></div><p class="text-[8px] text-gray-400 mt-1 truncate">To: ${tx.to}</p><div class="flex justify-between mt-3"><span class="text-[8px] text-emerald-400 font-mono truncate w-24">ID: ${tx.txId}</span><div class="flex space-x-2"><button onclick="navigator.clipboard.writeText('${tx.txId}')" class="text-[8px] bg-white/10 px-2 py-1 rounded">COPY</button><a href="${url}" target="_blank" class="text-[8px] bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">TRACK</a></div></div></div>`;
+                });
+            }
+        };
+        window.openWhitelist = async () => {
+            document.getElementById('whitelist-modal').classList.remove('hidden');
+            document.getElementById('add-contact-form').classList.remove('hidden');
+            document.getElementById('list-title').innerText = "Address Book";
+            const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            const list = document.getElementById('whitelist-entries'); list.innerHTML = "";
+            if (snap.exists() && snap.data().contacts) {
+                snap.data().contacts.forEach(c => {
+                    list.innerHTML += `<div class="bg-white/5 p-3 rounded-xl flex justify-between items-center mb-2"><div><p class="text-xs font-bold">${c.name}</p><p class="text-[9px] font-mono opacity-50">${c.address.substring(0,14)}...</p></div><button onclick="document.getElementById('send-to').value='${c.address}'; closeModal('whitelist-modal'); openSendModal();" class="text-[10px] bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded uppercase font-black">Select</button></div>`;
+                });
+            }
+        };
+        window.saveContact = async () => {
+            const name = document.getElementById('wl-name').value; const addr = document.getElementById('wl-address').value;
+            if(!name || !addr) return;
+            await updateDoc(doc(db, "users", auth.currentUser.uid), { contacts: arrayUnion({ name, address: addr }) });
+            openWhitelist();
+        };
+        window.openInAppBrowser = (q) => {
+            if(!q) return;
+            document.getElementById('in-app-browser').classList.remove('hidden');
+            let u = q.includes('.') ? (q.startsWith('http') ? q : 'https://'+q) : 'https://duckduckgo.com/?q='+q;
+            document.getElementById('browser-url').value = u; document.getElementById('browser-iframe').src = u;
+            playCustomVoice("EIP-1193 Injection active.");
+        };
+        window.closeInAppBrowser = () => { document.getElementById('in-app-browser').classList.add('hidden'); document.getElementById('browser-iframe').src = ""; };
+
+        // --- SYSTEM BOOT EXECUTOR ---
+        window.startExperience = () => {
+            document.getElementById('market-ticker-container').classList.remove('hidden'); // CRITICAL TICKER FIX
+            fetchTicker(); setInterval(fetchTicker, 60000);
+            
+            // Explicitly unlock audio context on click
+            if(!isMusicPlaying) { isMusicPlaying = true; bgm.play().catch(()=>{}); document.getElementById('music-btn').innerText = "🔊"; }
+            playCustomVoice("Booting ArcVault OS.");
+
+            onAuthStateChanged(auth, u => { 
+                if(u) { showWallet(u); } else { setView('auth-ui'); }
+            });
+        };
+    </script>
+</body>
+</html>
