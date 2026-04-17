@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
-    // CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -9,8 +8,10 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
     const API_KEY = process.env.CIRCLE_API_KEY;
-    const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET; // You MUST add this to Vercel
-    const { walletId, destinationAddress, amount, tokenId } = req.body;
+    const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
+    
+    // We now rely on assetSymbol instead of a hardcoded tokenId
+    const { walletId, destinationAddress, amount, assetSymbol = 'USDC' } = req.body;
 
     if (!walletId || !destinationAddress || !amount) {
         return res.status(400).json({ error: "Missing required parameters." });
@@ -20,20 +21,35 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Server Configuration Error: Missing Entity Secret." });
     }
 
-    const idempotencyKey = crypto.randomUUID();
-
     try {
-        // STEP 1: Fetch Circle's Public Key
+        // --- STEP 1: AUTO-DISCOVER THE REAL TOKEN ID ---
+        const balanceRes = await fetch(`https://api.circle.com/v1/w3s/wallets/${walletId}/balances`, {
+            headers: { 'Authorization': `Bearer ${API_KEY}` }
+        });
+        const balanceData = await balanceRes.json();
+        
+        if (!balanceRes.ok) {
+            throw new Error(`Failed to fetch balances to discover token ID. Circle API: ${balanceData.message || 'Unknown error'}`);
+        }
+
+        // Find the specific token in the wallet's balances
+        const targetToken = balanceData.data?.tokenBalances?.find(t => t.token.symbol === assetSymbol);
+        
+        if (!targetToken) {
+            // If the wallet has literally 0 balance of this token, Circle hasn't attached the ID to the wallet yet.
+            return res.status(404).json({ error: `Transfer Failed`, details: { message: `Cannot find ${assetSymbol} in this wallet. The wallet must have a balance to discover the Token ID.` } });
+        }
+        
+        const actualTokenId = targetToken.token.id;
+
+        // --- STEP 2: FETCH PUBLIC KEY & ENCRYPT SECRETS ---
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', {
             headers: { 'Authorization': `Bearer ${API_KEY}` }
         });
         const keyData = await keyRes.json();
         
-        if (!keyRes.ok) {
-            throw new Error("Failed to fetch Circle Public Key");
-        }
+        if (!keyRes.ok) throw new Error("Failed to fetch Circle Public Key");
 
-        // STEP 2: Encrypt your Entity Secret
         const entitySecretBuffer = Buffer.from(ENTITY_SECRET, 'hex');
         const encryptedData = crypto.publicEncrypt({
             key: keyData.data.publicKey,
@@ -42,7 +58,8 @@ export default async function handler(req, res) {
         }, entitySecretBuffer);
         const entitySecretCiphertext = encryptedData.toString('base64');
 
-        // STEP 3: Execute Transfer with the Ciphertext included
+        // --- STEP 3: EXECUTE DYNAMIC TRANSFER ---
+        const idempotencyKey = crypto.randomUUID();
         const response = await fetch('https://api.circle.com/v1/w3s/developer/transactions/transfer', {
             method: 'POST',
             headers: {
@@ -51,11 +68,11 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 idempotencyKey: idempotencyKey,
-                entitySecretCiphertext: entitySecretCiphertext, // CRITICAL FIX
+                entitySecretCiphertext: entitySecretCiphertext,
                 walletId: walletId,
                 destinationAddress: destinationAddress,
                 amounts: [amount.toString()],
-                tokenId: tokenId || "7b2bf0df-a1bd-5dd0-b5bc-180b181dbb3a", 
+                tokenId: actualTokenId, // The real, discovered UUID
                 feeLevel: "MEDIUM"
             })
         });
