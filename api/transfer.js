@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     }
 
     // --- THE ARCHITECT UPGRADE: MAP SYMBOLS TO YOUR CUSTOM CONTRACTS ---
-    const USDC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA".toLowerCase();
+    const USDC_ADDRESS = "0x3600000000000000000000000000000000000000".toLowerCase();
     const TARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78".toLowerCase();
 
     // Determine which contract address we are looking for based on the frontend request
