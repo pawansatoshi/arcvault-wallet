@@ -10,7 +10,6 @@ export default async function handler(req, res) {
     const API_KEY = process.env.CIRCLE_API_KEY;
     const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
     
-    // We now rely on assetSymbol instead of a hardcoded tokenId
     const { walletId, destinationAddress, amount, assetSymbol = 'USDC' } = req.body;
 
     if (!walletId || !destinationAddress || !amount) {
@@ -20,6 +19,13 @@ export default async function handler(req, res) {
     if (!ENTITY_SECRET) {
         return res.status(500).json({ error: "Server Configuration Error: Missing Entity Secret." });
     }
+
+    // --- THE ARCHITECT UPGRADE: MAP SYMBOLS TO YOUR CUSTOM CONTRACTS ---
+    const USDC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA".toLowerCase();
+    const TARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78".toLowerCase();
+
+    // Determine which contract address we are looking for based on the frontend request
+    const expectedAddress = (assetSymbol === 'USDC' || assetSymbol === 'tUSDC') ? USDC_ADDRESS : TARC_ADDRESS;
 
     try {
         // --- STEP 1: AUTO-DISCOVER THE REAL TOKEN ID ---
@@ -32,11 +38,12 @@ export default async function handler(req, res) {
             throw new Error(`Failed to fetch balances to discover token ID. Circle API: ${balanceData.message || 'Unknown error'}`);
         }
 
-        // Find the specific token in the wallet's balances
-        const targetToken = balanceData.data?.tokenBalances?.find(t => t.token.symbol === assetSymbol);
+        // Find the specific token in the wallet's balances by ADDRESS instead of symbol
+        const targetToken = balanceData.data?.tokenBalances?.find(t => 
+            t.token.tokenAddress && t.token.tokenAddress.toLowerCase() === expectedAddress
+        );
         
         if (!targetToken) {
-            // If the wallet has literally 0 balance of this token, Circle hasn't attached the ID to the wallet yet.
             return res.status(404).json({ error: `Transfer Failed`, details: { message: `Cannot find ${assetSymbol} in this wallet. The wallet must have a balance to discover the Token ID.` } });
         }
         
@@ -72,7 +79,7 @@ export default async function handler(req, res) {
                 walletId: walletId,
                 destinationAddress: destinationAddress,
                 amounts: [amount.toString()],
-                tokenId: actualTokenId, // The real, discovered UUID
+                tokenId: actualTokenId,
                 feeLevel: "MEDIUM"
             })
         });
