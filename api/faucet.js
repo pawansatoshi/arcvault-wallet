@@ -15,8 +15,8 @@ export default async function handler(req, res) {
     if (!walletId) return res.status(400).json({ error: "Missing walletId." });
     if (!ENTITY_SECRET) return res.status(500).json({ error: "Missing Entity Secret." });
 
-    // YOUR DEPLOYED FAUCET CONTRACT ADDRESS
-    const FAUCET_ADDRESS = "0x1A4EAee21145bdB6bDd69808865105dBc1dF118F";
+    // YOUR OFFICIAL LIVE tARC SMART CONTRACT ADDRESS
+    const FAUCET_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78";
 
     try {
         // 1. Fetch Public Key & Encrypt Entity Secret
@@ -46,8 +46,8 @@ export default async function handler(req, res) {
                 entitySecretCiphertext: entitySecretCiphertext,
                 walletId: walletId,
                 contractAddress: FAUCET_ADDRESS,
-                abiFunctionSignature: "claimTokens()", // The exact function in your Solidity code
-                abiParameters: [], // claimTokens takes no arguments
+                abiFunctionSignature: "claimTokens()", 
+                abiParameters: [], 
                 feeLevel: "MEDIUM"
             })
         });
