@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     const TARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78".toLowerCase();
 
     // Determine which contract address we are looking for based on the frontend request
-    const expectedAddress = (assetSymbol === 'USDC' || assetSymbol === 'tUSDC') ? USDC_ADDRESS : TARC_ADDRESS;
+    const expectedAddress = (assetSymbol === 'USDC' || assetSymbol === 'USDC') ? USDC_ADDRESS : TARC_ADDRESS;
 
     try {
         // --- STEP 1: AUTO-DISCOVER THE REAL TOKEN ID ---
