@@ -14,19 +14,17 @@ export default async function handler(req, res) {
     if (!walletId || !fromSymbol || !amount) return res.status(400).json({ error: "Missing parameters." });
     if (!ENTITY_SECRET) return res.status(500).json({ error: "Missing Entity Secret." });
 
-    // YOUR NEW ARCVUALT ECOSYSTEM
     const DEX_ADDRESS = "0x09980dfDA55Fa5C761887C82FA5014D9dFaA3A9A";
-    const USDC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA";
-    const TARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78";
+    
+    // Enforcing 'twrc' standard for wrapped native liquidity
+    const TWRC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA".toLowerCase();
+    const TARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78".toLowerCase();
 
-    // Route the correct token based on user selection
-    const tokenInAddress = fromSymbol === 'USDC' ? USDC_ADDRESS : TARC_ADDRESS;
-
-    // Scale the amount to 18 decimals for the blockchain
+    // Route the correct ERC-20 asset
+    const tokenInAddress = (fromSymbol === 'twrc' || fromSymbol === 'USDC') ? TWRC_ADDRESS : TARC_ADDRESS;
     const scaledAmount = BigInt(Math.floor(parseFloat(amount) * 1e18)).toString();
 
     try {
-        // Fetch Circle Public Key for Entity Secret Encryption
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', {
             headers: { 'Authorization': `Bearer ${API_KEY}` }
         });
@@ -41,7 +39,6 @@ export default async function handler(req, res) {
         }, entitySecretBuffer);
         const entitySecretCiphertext = encryptedData.toString('base64');
 
-        // Command Circle to execute the Swap on your Custom DEX
         const response = await fetch('https://api.circle.com/v1/w3s/developer/transactions/contractExecution', {
             method: 'POST',
             headers: {
@@ -61,7 +58,7 @@ export default async function handler(req, res) {
 
         const result = await response.json();
         if (!response.ok) return res.status(response.status).json({ error: "Swap Execution Failed", details: result });
-
+        
         return res.status(200).json({ success: true, data: result.data });
 
     } catch (err) {
