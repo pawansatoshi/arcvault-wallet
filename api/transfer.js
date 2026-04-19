@@ -20,12 +20,9 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Server Configuration Error: Missing Entity Secret." });
     }
 
-    // --- THE ARCHITECT UPGRADE: MAP SYMBOLS TO YOUR CUSTOM CONTRACTS ---
+    // --- THE ARCHITECT UPGRADE: NATIVE FALLBACK MAPPING ---
     const USDC_ADDRESS = "0x3600000000000000000000000000000000000000".toLowerCase();
     const TARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78".toLowerCase();
-
-    // Determine which contract address we are looking for based on the frontend request
-    const expectedAddress = (assetSymbol === 'USDC' || assetSymbol === 'USDC') ? USDC_ADDRESS : TARC_ADDRESS;
 
     try {
         // --- STEP 1: AUTO-DISCOVER THE REAL TOKEN ID ---
@@ -38,10 +35,16 @@ export default async function handler(req, res) {
             throw new Error(`Failed to fetch balances to discover token ID. Circle API: ${balanceData.message || 'Unknown error'}`);
         }
 
-        // Find the specific token in the wallet's balances by ADDRESS instead of symbol
-        const targetToken = balanceData.data?.tokenBalances?.find(t => 
-            t.token.tokenAddress && t.token.tokenAddress.toLowerCase() === expectedAddress
-        );
+        // UPGRADED FINDER: Safely catches native tokens even if Circle omits the contract address
+        const targetToken = balanceData.data?.tokenBalances?.find(t => {
+            if (assetSymbol === 'USDC') {
+                // For Native USDC: Match the symbol OR the 0x3600 precompile address
+                return t.token.symbol === 'USDC' || (t.token.tokenAddress && t.token.tokenAddress.toLowerCase() === USDC_ADDRESS);
+            } else {
+                // For standard ERC-20 (tARC): Strictly match the deployed contract address
+                return t.token.tokenAddress && t.token.tokenAddress.toLowerCase() === TARC_ADDRESS;
+            }
+        });
         
         if (!targetToken) {
             return res.status(404).json({ error: `Transfer Failed`, details: { message: `Cannot find ${assetSymbol} in this wallet. The wallet must have a balance to discover the Token ID.` } });
