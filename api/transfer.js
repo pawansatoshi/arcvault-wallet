@@ -15,49 +15,41 @@ export default async function handler(req, res) {
     if (!walletId || !destinationAddress || !amount) {
         return res.status(400).json({ error: "Missing required parameters." });
     }
-    
     if (!ENTITY_SECRET) {
         return res.status(500).json({ error: "Server Configuration Error: Missing Entity Secret." });
     }
 
-    // --- THE ARCHITECT UPGRADE: NATIVE FALLBACK MAPPING ---
     const USDC_ADDRESS = "0x3600000000000000000000000000000000000000".toLowerCase();
     const TARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78".toLowerCase();
 
     try {
-        // --- STEP 1: AUTO-DISCOVER THE REAL TOKEN ID ---
         const balanceRes = await fetch(`https://api.circle.com/v1/w3s/wallets/${walletId}/balances`, {
             headers: { 'Authorization': `Bearer ${API_KEY}` }
         });
         const balanceData = await balanceRes.json();
         
         if (!balanceRes.ok) {
-            throw new Error(`Failed to fetch balances to discover token ID. Circle API: ${balanceData.message || 'Unknown error'}`);
+            throw new Error(`Failed to fetch balances. Circle API: ${balanceData.message || 'Unknown error'}`);
         }
 
-        // UPGRADED FINDER: Safely catches native tokens even if Circle omits the contract address
         const targetToken = balanceData.data?.tokenBalances?.find(t => {
             if (assetSymbol === 'USDC') {
-                // For Native USDC: Match the symbol OR the 0x3600 precompile address
                 return t.token.symbol === 'USDC' || (t.token.tokenAddress && t.token.tokenAddress.toLowerCase() === USDC_ADDRESS);
             } else {
-                // For standard ERC-20 (tARC): Strictly match the deployed contract address
                 return t.token.tokenAddress && t.token.tokenAddress.toLowerCase() === TARC_ADDRESS;
             }
         });
         
         if (!targetToken) {
-            return res.status(404).json({ error: `Transfer Failed`, details: { message: `Cannot find ${assetSymbol} in this wallet. The wallet must have a balance to discover the Token ID.` } });
+            return res.status(404).json({ error: `Transfer Failed`, details: { message: `Cannot find ${assetSymbol} in this wallet.` } });
         }
         
         const actualTokenId = targetToken.token.id;
 
-        // --- STEP 2: FETCH PUBLIC KEY & ENCRYPT SECRETS ---
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', {
             headers: { 'Authorization': `Bearer ${API_KEY}` }
         });
         const keyData = await keyRes.json();
-        
         if (!keyRes.ok) throw new Error("Failed to fetch Circle Public Key");
 
         const entitySecretBuffer = Buffer.from(ENTITY_SECRET, 'hex');
@@ -68,14 +60,10 @@ export default async function handler(req, res) {
         }, entitySecretBuffer);
         const entitySecretCiphertext = encryptedData.toString('base64');
 
-        // --- STEP 3: EXECUTE DYNAMIC TRANSFER ---
         const idempotencyKey = crypto.randomUUID();
         const response = await fetch('https://api.circle.com/v1/w3s/developer/transactions/transfer', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${API_KEY}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 idempotencyKey: idempotencyKey,
                 entitySecretCiphertext: entitySecretCiphertext,
@@ -88,10 +76,7 @@ export default async function handler(req, res) {
         });
 
         const result = await response.json();
-
-        if (!response.ok) {
-            return res.status(response.status).json({ error: "Circle Transfer Failed", details: result });
-        }
+        if (!response.ok) return res.status(response.status).json({ error: "Circle Transfer Failed", details: result });
 
         return res.status(200).json({ success: true, data: result.data });
 
