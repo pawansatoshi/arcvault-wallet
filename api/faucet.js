@@ -25,7 +25,7 @@ export default async function handler(req, res) {
             walletId: TREASURY_WALLET,
             destinationAddress: destinationAddress,
             amounts: ["100"],
-            tokenAddress: "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA", // 2026 Direct Routing
+            tokenAddress: "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA", 
             blockchain: "ARC-TESTNET",
             feeLevel: "MEDIUM"
         };
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
             walletId: TREASURY_WALLET,
             destinationAddress: destinationAddress,
             amounts: ["100"],
-            tokenAddress: "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78", // 2026 Direct Routing
+            tokenAddress: "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78", 
             blockchain: "ARC-TESTNET",
             feeLevel: "MEDIUM"
         };
