@@ -1,19 +1,20 @@
 {
-  "name": "ArcVault OS",
+  "name": "ArcVault OS v3.0",
   "short_name": "ArcVault",
-  "description": "The Agent-Ready Mobile Financial Hub for the Arc Network",
+  "description": "Official Web3 Ecosystem Operating System for the Arc Network.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#000000",
+  "theme_color": "#00FFA3",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "logo.png",
+      "src": "/logo.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "logo.png",
+      "src": "/logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }
