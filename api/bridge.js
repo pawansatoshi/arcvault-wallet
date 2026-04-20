@@ -9,21 +9,22 @@ export default async function handler(req, res) {
     const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
     const MASTER_WALLET_ID = process.env.CIRCLE_MASTER_WALLET_ID; 
 
-    const { amount, destinationAddress, sourceChain, destChain } = req.body;
+    // Receive the exact parameters from your ArcVault OS frontend
+    const { amount, destinationAddress } = req.body;
 
     if (!amount || !destinationAddress) {
         return res.status(400).json({ success: false, error: "Missing parameters." });
     }
 
-    // 1. Official CCTP Contract Addresses
-    // TODO: We need the exact TokenMessenger address for Arc Testnet
-    const TOKEN_MESSENGER_ADDRESS = "INSERT_ARC_TOKEN_MESSENGER_ADDRESS"; 
-    const USDC_ADDRESS = "0x...USDC..."; // Arc Native USDC
+    // Official Arc Testnet CCTP Addresses (Sourced from docs.arc.network)
+    const TOKEN_MESSENGER_ADDRESS = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"; 
+    const USDC_ADDRESS = "0x3600000000000000000000000000000000000000"; 
 
-    // Domain ID for Arbitrum Sepolia in Circle CCTP is 3
+    // Domain ID for Arbitrum Sepolia in Circle CCTP
     const DESTINATION_DOMAIN = 3; 
 
     try {
+        // 1. Setup Fresh Cryptographic Security
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', { 
             headers: { 'Authorization': `Bearer ${API_KEY}` } 
         });
@@ -35,10 +36,14 @@ export default async function handler(req, res) {
         );
         const entitySecretCiphertext = encryptedData.toString('base64');
 
-        // Pad the destination address to 32 bytes (required by CCTP)
+        // 2. Format Parameters for CCTP Smart Contract
+        // CCTP strictly requires the destination address to be padded to 32 bytes (64 hex characters)
         const paddedDestination = "0x" + destinationAddress.replace("0x", "").padStart(64, "0");
-        const rawAmount = (parseFloat(amount) * 1000000).toString(); // USDC has 6 decimals
+        
+        // Arc USDC ERC-20 interface requires 6 decimals of precision
+        const rawAmount = (parseFloat(amount) * 1000000).toString(); 
 
+        // 3. Command the Treasury to execute 'depositForBurn'
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: entitySecretCiphertext,
@@ -64,7 +69,7 @@ export default async function handler(req, res) {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || "CCTP Burn Initiation Failed");
 
-        // We return the Operation ID. The frontend will use this to track the hash and poll the Iris API.
+        // Return the Circle Operation ID to the frontend
         return res.status(200).json({ success: true, operationId: result.data.id });
 
     } catch (err) {
