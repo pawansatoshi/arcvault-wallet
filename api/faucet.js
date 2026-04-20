@@ -14,30 +14,29 @@ export default async function handler(req, res) {
 
     const tUSDC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA";
     const tARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78";
-    
-    // Web3 Raw Amounts: Assuming 18 decimals for custom tokens. 100 tokens = 100 * 10^18
-    // If your tUSDC uses 6 decimals instead, change this to "100000000"
     const RAW_AMOUNT = "100000000000000000000"; 
 
     try {
-        // Setup Security Keys
+        // Fetch public key once (safe to reuse)
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', { headers: { 'Authorization': `Bearer ${API_KEY}` } });
         const keyData = await keyRes.json();
-        const encryptedData = crypto.publicEncrypt({ key: keyData.data.publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(ENTITY_SECRET, 'hex'));
-        const entitySecretCiphertext = encryptedData.toString('base64');
+        const publicKey = keyData.data.publicKey;
 
-        // Execute Raw Smart Contract Transfer (Bypasses the "Not Indexed" error)
         const executeContractTransfer = async (contractAddr) => {
+            // GENERATE FRESH CIPHERTEXT FOR EVERY SINGLE TRANSFER
+            const encryptedData = crypto.publicEncrypt(
+                { key: publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, 
+                Buffer.from(ENTITY_SECRET, 'hex')
+            );
+            const freshCiphertext = encryptedData.toString('base64');
+
             const payload = {
                 idempotencyKey: crypto.randomUUID(),
-                entitySecretCiphertext: entitySecretCiphertext,
+                entitySecretCiphertext: freshCiphertext,
                 walletId: MASTER_WALLET_ID,
                 contractAddress: contractAddr,
                 abiFunctionSignature: "transfer(address,uint256)",
-                abiParameters: [
-                    destinationAddress,
-                    RAW_AMOUNT
-                ],
+                abiParameters: [destinationAddress, RAW_AMOUNT],
                 feeLevel: "MEDIUM", 
                 blockchain: "ARC-TESTNET"
             };
@@ -53,9 +52,12 @@ export default async function handler(req, res) {
             return result.data.id;
         };
 
-        // Fire both transfers
+        // Transfer 1: Fresh Encryption
         const txIdUsdc = await executeContractTransfer(tUSDC_ADDRESS);
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Prevent Circle rate-limit
+        
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Prevent rate-limit
+        
+        // Transfer 2: Fresh Encryption
         const txIdArc = await executeContractTransfer(tARC_ADDRESS);
 
         return res.status(200).json({ success: true, txHashUsdc: txIdUsdc, txHashArc: txIdArc });
