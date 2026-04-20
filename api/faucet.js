@@ -17,12 +17,29 @@ export default async function handler(req, res) {
     const DISPENSE_AMOUNT = "100"; 
 
     try {
+        // 1. Fetch Token UUIDs (Fixes "API_PARAMETER_INVALID")
+        const getTokenId = async (address) => {
+            const tokenRes = await fetch(`https://api.circle.com/v1/w3s/tokens?address=${address}`, {
+                headers: { 'Authorization': `Bearer ${API_KEY}` }
+            });
+            const tokenData = await tokenRes.json();
+            if (tokenData.data && tokenData.data.tokens && tokenData.data.tokens.length > 0) {
+                return tokenData.data.tokens[0].id;
+            }
+            throw new Error(`Token ${address} not indexed by Circle.`);
+        };
+
+        const tUSDC_UUID = await getTokenId(tUSDC_ADDRESS);
+        const tARC_UUID = await getTokenId(tARC_ADDRESS);
+
+        // 2. Setup Security Keys
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', { headers: { 'Authorization': `Bearer ${API_KEY}` } });
         const keyData = await keyRes.json();
         const encryptedData = crypto.publicEncrypt({ key: keyData.data.publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(ENTITY_SECRET, 'hex'));
         const entitySecretCiphertext = encryptedData.toString('base64');
 
-        const executeTransfer = async (tokenAddr) => {
+        // 3. Execute Transfer using UUID
+        const executeTransfer = async (tokenUuid) => {
             const payload = {
                 idempotencyKey: crypto.randomUUID(),
                 entitySecretCiphertext: entitySecretCiphertext,
@@ -30,8 +47,7 @@ export default async function handler(req, res) {
                 destinationAddress: destinationAddress,
                 amounts: [DISPENSE_AMOUNT],
                 feeLevel: "MEDIUM", 
-                tokenId: tokenAddr,
-                blockchain: "ARC-TESTNET"
+                tokenId: tokenUuid
             };
             const response = await fetch('https://api.circle.com/v1/w3s/developer/transactions/transfer', {
                 method: 'POST',
@@ -43,9 +59,9 @@ export default async function handler(req, res) {
             return result.data.id;
         };
 
-        const txIdUsdc = await executeTransfer(tUSDC_ADDRESS);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const txIdArc = await executeTransfer(tARC_ADDRESS);
+        const txIdUsdc = await executeTransfer(tUSDC_UUID);
+        await new Promise(resolve => setTimeout(resolve, 1200)); // Delay prevents rate-limit crash
+        const txIdArc = await executeTransfer(tARC_UUID);
 
         return res.status(200).json({ success: true, txHashUsdc: txIdUsdc, txHashArc: txIdArc });
     } catch (err) {
