@@ -14,10 +14,12 @@ export default async function handler(req, res) {
 
     const tUSDC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA";
     const tARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78";
+    
+    // Web3 Raw Amounts: Assuming 18 decimals for custom tokens. 100 tokens = 100 * 10^18
     const RAW_AMOUNT = "100000000000000000000"; 
 
     try {
-        // Fetch public key once (safe to reuse)
+        // Fetch public key once (safe to reuse the public key)
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', { headers: { 'Authorization': `Bearer ${API_KEY}` } });
         const keyData = await keyRes.json();
         const publicKey = keyData.data.publicKey;
@@ -52,12 +54,13 @@ export default async function handler(req, res) {
             return result.data.id;
         };
 
-        // Transfer 1: Fresh Encryption
+        // Transfer 1: tUSDC (Fresh Encryption)
         const txIdUsdc = await executeContractTransfer(tUSDC_ADDRESS);
         
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Prevent rate-limit
+        // Wait 1.5 seconds to prevent rate-limiting from Circle's API
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
         
-        // Transfer 2: Fresh Encryption
+        // Transfer 2: tARC (Fresh Encryption)
         const txIdArc = await executeContractTransfer(tARC_ADDRESS);
 
         return res.status(200).json({ success: true, txHashUsdc: txIdUsdc, txHashArc: txIdArc });
