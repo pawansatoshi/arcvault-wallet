@@ -7,7 +7,13 @@ export default async function handler(req, res) {
 
     const API_KEY = process.env.CIRCLE_API_KEY;
     const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
-    const { walletId, tokenAddress, amount } = req.body;
+    
+    // Dynamically targeting the user's connected wallet
+    const { walletId, fromSymbol, amount, tokenAddress } = req.body;
+
+    if (!walletId || !tokenAddress || !amount) {
+        return res.status(400).json({ error: "Missing required parameters." });
+    }
 
     const DEX_ADDRESS = "0x09980dfDA55Fa5C761887C82FA5014D9dFaA3A9A";
     const scaledAmount = BigInt(Math.floor(parseFloat(amount) * 1e18)).toString();
@@ -24,7 +30,8 @@ export default async function handler(req, res) {
             contractAddress: tokenAddress,
             abiFunctionSignature: "approve(address,uint256)",
             abiParameters: [DEX_ADDRESS, scaledAmount],
-            feeLevel: "MEDIUM"
+            feeLevel: "MEDIUM",
+            blockchain: "ARC-TESTNET"
         };
 
         const response = await fetch('https://api.circle.com/v1/w3s/developer/transactions/contractExecution', {
@@ -35,7 +42,8 @@ export default async function handler(req, res) {
 
         const result = await response.json();
         if (!response.ok) return res.status(response.status).json({ error: result.message || "Approval Failed", details: result });
-        return res.status(200).json({ success: true, data: result.data });
+        
+        return res.status(200).json({ success: true, operationId: result.data.id });
     } catch (err) {
         return res.status(500).json({ error: "Server Error", details: err.message });
     }
