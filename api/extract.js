@@ -1,45 +1,36 @@
 import { ethers } from 'ethers';
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    if (req.method === 'OPTIONS') return res.status(200).end();
+    const { txHash } = req.body;
 
-    const { operationId } = req.body;
-    
     try {
-        // Step A: Get the actual Blockchain Tx Hash from Circle W3S
-        const circleRes = await fetch(`https://api.circle.com/v1/w3s/transactions/${operationId}`, {
-            headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` }
-        });
-        const circleData = await circleRes.json();
-        
-        if (circleData.data.transaction.state !== 'COMPLETE') {
-            return res.status(202).json({ status: "pending" }); // Burn still processing
-        }
-        
-        const txHash = circleData.data.transaction.txHash;
+        // 1. Connect to Source RPC (Arc Testnet)
+        const provider = new ethers.JsonRpcProvider("https://testnet-rpc.arc.network");
+        const receipt = await provider.getTransactionReceipt(txHash);
 
-        // Step B: Connect to Source Chain to extract logs
-        const arcProvider = new ethers.JsonRpcProvider("https://testnet-rpc.arc.network");
-        const receipt = await arcProvider.getTransactionReceipt(txHash);
-
-        if (!receipt) {
-            return res.status(202).json({ status: "pending" }); // Waiting for RPC indexer
+        if (!receipt || receipt.status === 0) {
+            throw new Error("Transaction not mined or reverted on-chain.");
         }
 
-        // Step C: Isolate the MessageSent event signature
+        // 2. Exact signature for CCTP MessageSent(bytes message)
         const MESSAGE_SENT_TOPIC = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
         const log = receipt.logs.find(l => l.topics[0] === MESSAGE_SENT_TOPIC);
         
-        if (!log) throw new Error("MessageSent log not found in receipt.");
-        
-        // Step D: Format bytes for Iris
-        const messageBytes = log.data;
-        const messageHash = ethers.keccak256(messageBytes);
+        if (!log) throw new Error("MessageSent log missing. depositForBurn likely failed.");
 
-        return res.status(200).json({ status: "extracted", messageBytes, messageHash });
+        // 3. CRITICAL FIX: ABI-Decode the dynamic bytes payload
+        const abiCoder = new ethers.AbiCoder();
+        const decodedMessage = abiCoder.decode(['bytes'], log.data)[0];
+
+        // 4. CRITICAL FIX: Use Ethereum Keccak256, NOT Node.js SHA3
+        const messageHash = ethers.keccak256(decodedMessage);
+
+        return res.status(200).json({ 
+            success: true, 
+            messageBytes: decodedMessage, // Send this exactly to receiveMessage
+            messageHash: messageHash      // Send this to Iris API
+        });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        return res.status(500).json({ success: false, error: err.message });
     }
 }
