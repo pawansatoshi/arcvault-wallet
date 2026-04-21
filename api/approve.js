@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
     
     // Dynamically targeting the user's connected wallet
-    const { walletId, fromSymbol, amount, tokenAddress } = req.body;
+    const { walletId, amount, tokenAddress } = req.body;
 
     if (!walletId || !tokenAddress || !amount) {
         return res.status(400).json({ error: "Missing required parameters." });
