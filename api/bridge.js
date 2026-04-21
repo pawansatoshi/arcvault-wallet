@@ -31,8 +31,6 @@ export default async function handler(req, res) {
         const entitySecretCiphertext = encryptedData.toString('base64');
 
         const paddedDestination = "0x" + destinationAddress.replace("0x", "").padStart(64, "0");
-        
-        // STRICT 6-DECIMAL INTEGER ENFORCEMENT
         const rawAmount = Math.floor(parseFloat(amount) * 1000000).toString(); 
 
         const payload = {
@@ -63,6 +61,4 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, operationId: result.data.id });
 
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
-    }
-}
+        return res.status(
