@@ -1,6 +1,7 @@
 {
   "name": "arcvault",
   "version": "1.0.0",
+  "type": "module",
   "dependencies": {
     "@circle-fin/app-kit": "latest",
     "@circle-fin/adapter-circle-wallets": "latest",
