@@ -242,6 +242,9 @@
         // ==========================================
         // CORRECTED 3-STEP MANUAL CCTP BRIDGE
         // ==========================================
+        // ==========================================
+        // FINAL 4-STEP MANUAL CCTP BRIDGE
+        // ==========================================
         window.executeBridge = async () => {
             const uid = window.overrideUid || auth.currentUser?.uid; if(!uid) return;
             const snap = await getDoc(doc(db, "users", uid)); 
@@ -254,20 +257,38 @@
             document.getElementById('bridge-modal').classList.add('hidden');
             window.Term.show("Manual CCTP Bridge");
             
-            // WE ONLY HAVE 3 STEPS NOW - NO APPROVAL
-            window.Term.setSteps(["Burn Native USDC", "Extract Message", "Attest & Mint"]);
+            // 4 Steps Restored
+            window.Term.setSteps(["Approve TokenMessenger", "Burn Native USDC", "Extract & Attest", "Arbitrum Mint"]);
             
             try {
-                // STEP 1: BURN (Directly hitting the native token messenger)
-                window.Term.updateStep(0, 3, "Burning USDC...", "active");
-                window.Term.insight("Executing depositForBurn on Arc Testnet. Bypassing ERC-20 approval because this is Native USDC.", "Burning USDC on source chain.");
+                // STEP 1: APPROVE
+                window.Term.updateStep(0, 4, "Approving...", "active");
+                window.Term.insight("Securing ERC-20 approval on the Arc Native Precompile.", "Approving CCTP allowance.");
+                
+                const appRes = await fetch('/api/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, amount: amount }) });
+                const appData = await appRes.json();
+                if (!appData.success) throw new Error("Approval Backend Failed: " + JSON.stringify(appData));
+                
+                // Wait for Approval to settle on the blockchain
+                for(let i=0; i<15; i++) {
+                    const chkRes = await fetch('/api/status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ txId: appData.operationId }) });
+                    const chkData = await chkRes.json();
+                    if(chkData.data?.transaction?.state === 'COMPLETE') break;
+                    if(chkData.data?.transaction?.state === 'FAILED') throw new Error("Approval On-Chain Failed: ESTIMATION_ERROR");
+                    await new Promise(r => setTimeout(r, 4000));
+                }
+                window.Term.updateStep(0, 4, "Approved ✓", "completed");
+
+                // STEP 2: BURN 
+                window.Term.updateStep(1, 4, "Burning USDC...", "active");
+                window.Term.insight("Executing depositForBurn now that allowance is secured.", "Burning USDC on source chain.");
                 const burnRes = await fetch('/api/burn', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, destinationAddress: destAddress, amount: amount }) });
                 const burnData = await burnRes.json();
                 if (!burnData.success) throw new Error("Burn API Failed: " + JSON.stringify(burnData));
-                window.Term.updateStep(0, 3, "Burn Sent ✓", "completed");
+                window.Term.updateStep(1, 4, "Burn Sent ✓", "completed");
 
-                // STEP 2: EXTRACT LOGS 
-                window.Term.updateStep(1, 3, "Checking Blockchain...", "active");
+                // STEP 3: EXTRACT LOGS & ATTEST
+                window.Term.updateStep(2, 4, "Checking Blockchain...", "active");
                 window.Term.insight("Waiting for block finality to extract MessageSent logs.", "Extracting message bytes.");
                 let messageBytes = null;
                 for(let i=0; i<20; i++) {
@@ -277,14 +298,10 @@
                     if (checkData.error) throw new Error("Extract Logic Failed: " + JSON.stringify(checkData));
                     await new Promise(r => setTimeout(r, 5000));
                 }
-                if(!messageBytes) throw new Error("Failed to extract log bytes from Arc Network after 100 seconds.");
-                window.Term.updateStep(1, 3, "Logs Extracted ✓", "completed");
-
-                // STEP 3A: CLIENT-SIDE ATTESTATION
-                window.Term.updateStep(2, 3, "Fetching Attestation...", "active");
-                const messageHash = ethers.keccak256(messageBytes); 
-                window.Term.insight("Cryptographically hashing the message and polling Circle Iris nodes.", "Polling attestation service.");
+                if(!messageBytes) throw new Error("Failed to extract log bytes from Arc Network.");
                 
+                window.Term.insight("Cryptographically hashing the message and polling Circle Iris nodes.", "Polling attestation service.");
+                const messageHash = ethers.keccak256(messageBytes); 
                 let attestation = null;
                 for(let i=0; i<30; i++) {
                     const irisRes = await fetch(`https://iris-api-sandbox.circle.com/v1/attestations/${messageHash}`);
@@ -293,31 +310,20 @@
                     await new Promise(r => setTimeout(r, 5000));
                 }
                 if(!attestation) throw new Error("Iris API Timeout.");
-                window.Term.updateStep(2, 3, "Attestation Secured ✓", "completed");
+                window.Term.updateStep(2, 4, "Attested ✓", "completed");
 
-                // STEP 3B: MINT
-                window.Term.updateStep(2, 3, "Minting to Arbitrum...", "active");
+                // STEP 4: MINT
+                window.Term.updateStep(3, 4, "Minting to Arbitrum...", "active");
                 window.Term.insight("Attestation secured. Triggering Arbitrum Sepolia mint.", "Executing final mint.");
                 const mintRes = await fetch('/api/mint', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, messageBytes, attestation }) });
                 const mintData = await mintRes.json();
                 if (!mintData.success) throw new Error("Mint API Failed: " + JSON.stringify(mintData));
 
-                window.Term.updateStep(2, 3, "Minted ✓", "completed");
+                window.Term.updateStep(3, 4, "Minted ✓", "completed");
                 window.Term.success(mintData.operationId, "#", "Bridge successfully finalized.");
                 
             } catch (e) {
-                window.Term.updateStep(0, 3, "Failed", "error"); 
+                window.Term.updateStep(0, 4, "Failed", "error"); 
                 window.Term.error(e.message); 
             }
         };
-
-        window.startExperience = () => {
-            try {
-                if(!isMusicPlaying) { isMusicPlaying = true; bgm.play().catch(()=>{}); document.getElementById('music-btn').innerText = "🔊"; } 
-                playCustomVoice("Booting ArcVault OS Manual Flow.", "Booting ArcVault OS.");
-                onAuthStateChanged(auth, u => { if(u) { showWallet(u); } else { setView('auth-ui'); } });
-            } catch (e) { showError("Boot Error", e.message, "ERR-BOOT"); }
-        };
-    </script>
-</body>
-</html>
