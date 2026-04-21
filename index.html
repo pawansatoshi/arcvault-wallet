@@ -861,7 +861,82 @@
         window.flipBridgeNetwork = () => { const srcLabel = document.getElementById('bridge-source-label'); const destLabel = document.getElementById('bridge-dest-label'); if(bridgeDirection === 'arc_to_arb') { bridgeDirection = 'arb_to_arc'; srcLabel.innerText = "From: Arb Sepolia"; destLabel.innerText = "To: Arc Testnet"; } else { bridgeDirection = 'arc_to_arb'; srcLabel.innerText = "From: Arc Testnet"; destLabel.innerText = "To: Arb Sepolia"; } };
 
         
-    
+    window.executeBridge = async () => {
+            const uid = window.overrideUid || auth.currentUser?.uid; if(!uid) return;
+            const snap = await getDoc(doc(db, "users", uid)); 
+            
+            // The App Kit needs the actual Wallet Address, not just the Wallet ID
+            const wAddress = snap.data()?.walletAddress || document.getElementById('wallet-address').innerText;
+            const destAddress = document.getElementById('bridge-target-address').value; 
+            const asset = document.getElementById('bridge-asset').value; 
+            const amount = document.getElementById('bridge-amount').value;
+            
+            if(!amount || amount <= 0) return alert("Enter amount."); 
+            if(!destAddress) return alert("Enter address.");
+
+            document.getElementById('bridge-modal').classList.add('hidden');
+            window.Term.show("Circle App Kit Forwarding Service");
+            
+            // Notice we only need 3 logical steps now, and no manual polling!
+            window.Term.setSteps(["Initiating App Kit", "Forwarding to Circle", "Off-chain Processing"]);
+            
+            const startTime = Date.now();
+            try {
+                // STEP 1: Call your new Vercel endpoint
+                window.Term.updateStep(0, 3, "Connecting to Backend...", "active");
+                window.Term.insight("Triggering the official Circle App Kit. Passing source and destination parameters securely to the serverless backend.", "Initiating App Kit.");
+                
+                const response = await fetch('/api/bridge-appkit', { 
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'}, 
+                    body: JSON.stringify({ 
+                        sourceAddress: wAddress, 
+                        destinationAddress: destAddress, 
+                        amount: amount.toString() 
+                    }) 
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || "App Kit Bridge Failed.");
+                }
+
+                // STEP 2 & 3: Circle takes over entirely
+                window.Term.updateStep(0, 3, "Connected ✓", "completed");
+                window.Term.updateStep(1, 3, "Forwarded ✓", "completed");
+                window.Term.updateStep(2, 3, "Circle Infrastructure takes over", "active");
+                
+                window.Term.insight("Transaction successfully handed off to Circle's Forwarding Service. Circle will automatically poll the Iris API and pay the gas to execute the mint on Arbitrum Sepolia. You can safely close the app without breaking the bridge.", "Forwarded successfully.");
+
+                const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                
+                // Log history
+                await updateDoc(doc(db, "users", uid), { 
+                    txHistory: arrayUnion({ type: 'Bridge', symbol: asset, targetNet: 'Arbitrum Sepolia', amount: amount, txId: "Forwarded via AppKit", date: new Date().toISOString() }) 
+                }).catch(async () => { 
+                    await setDoc(doc(db, "users", uid), { txHistory: [{ type: 'Bridge', symbol: asset, targetNet: 'Arbitrum Sepolia', amount: amount, txId: "Forwarded via AppKit", date: new Date().toISOString() }] }, { merge: true }); 
+                });
+
+                window.Term.updateStep(2, 3, "Processing Off-chain", "completed");
+                
+                // Show Success Panel
+                document.getElementById('term-insight-box').className = "bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl mb-4 h-32 overflow-y-auto transition-colors";
+                document.getElementById('term-insight-lbl').className = "text-[8px] font-bold uppercase tracking-widest mb-1 text-emerald-400";
+                document.getElementById('term-insight-text').innerHTML = `Bridge initiated! Circle's infrastructure is now processing the attestation and minting in the background.`;
+                document.getElementById('term-final-hash').innerText = `Status: Forwarded to Circle`;
+                document.getElementById('term-success-panel').classList.remove('hidden');
+                
+                const btn = document.getElementById('term-close-btn');
+                btn.classList.remove('opacity-50', 'pointer-events-none'); 
+                btn.innerText = "Return to Vault";
+                playCustomVoice("Bridge forwarded successfully. Circle will handle the rest.", "Bridge forwarded.");
+                
+            } catch(e) { 
+                window.Term.updateStep(0, 3, "Failed", "error"); 
+                window.Term.error(e.message); 
+            } 
+        };
         window.calculateSwapEstimate = () => {
             const amt = parseFloat(document.getElementById('swap-amount').value || 0); const fromToken = document.getElementById('swap-from-token').value; const toToken = document.getElementById('swap-to-token').value; const ratioDisplay = document.getElementById('swap-ratio-display'); 
             let conversionRate = 1.0; 
