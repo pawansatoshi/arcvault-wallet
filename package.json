@@ -1,0 +1,9 @@
+{
+  "name": "arcvault",
+  "version": "1.0.0",
+  "dependencies": {
+    "@circle-fin/app-kit": "latest",
+    "@circle-fin/adapter-circle-wallets": "latest",
+    "ethers": "latest"
+  }
+}
