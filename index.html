@@ -440,7 +440,7 @@
 
                 let txHash = null;
 
-                for (let i = 0; i < 25; i++) {
+                for (let i = 0; i < 60; i++) {
                     const res = await fetch('/api/extract', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -463,9 +463,8 @@
                     await new Promise(r => setTimeout(r, 3000));
                 }
 
-                if (!txHash) {
-                console.warn("txHash not found after polling");
-                return;
+                    if (!txHash) {
+                      throw new Error("txHash not found after polling");
                 }
                 
                 console.log("TX HASH FOUND:", txHash);
