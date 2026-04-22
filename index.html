@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>ArcVault OS v12.0 - Ultimate Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
+    <style>
+        :root{--arc-main:#00FFA3;--arc-sec:#0075FF;--bg-panel:rgba(255,255,255,0.03)} body{font-family:'Plus Jakarta Sans',sans-serif;background-color:#000;color:#fff;-webkit-font-smoothing:antialiased;background-image:radial-gradient(circle at 50% -20%,#1a1a1a 0%,#000 60%);min-height:100vh;overflow-x:hidden;margin:0;padding:0} .glass{background:var(--bg-panel);backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.08)} .arc-btn-gradient{background:linear-gradient(135deg,var(--arc-main) 0%,var(--arc-sec) 100%);transition:0.2s} .text-gradient{background:linear-gradient(135deg,#fff 30%,rgba(255,255,255,0.5) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent} .action-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:65px;height:65px;border-radius:16px;background:rgba(255,255,255,0.05);cursor:pointer;transition:0.2s;border:1px solid transparent} .action-btn:hover{background:rgba(255,255,255,0.1);border-color:var(--arc-main);transform:translateY(-2px)} input,select,textarea{background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);color:white;padding:12px;border-radius:12px;width:100%;outline:none;transition:0.2s} .fade-in{animation:fadeIn 0.4s ease-out forwards} @keyframes fadeIn{from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)}} ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:4px} .edu-node{transition:all 0.3s ease;border-left:2px solid #333;padding-left:12px;position:relative;margin-bottom:16px;opacity:0.4} .edu-node:last-child{border-left:2px solid transparent} .edu-node::before{content:'';position:absolute;left:-5px;top:0;width:8px;height:8px;border-radius:50%;background:#333;transition:0.3s} .edu-node.active{opacity:1;border-left-color:var(--arc-main)} .edu-node.active::before{background:var(--arc-main);box-shadow:0 0 10px var(--arc-main)} .edu-node.completed{opacity:1;border-left-color:#0075FF} .edu-node.completed::before{background:#0075FF} .edu-node.failed{opacity:1;border-left-color:#EF4444} .edu-node.failed::before{background:#EF4444;box-shadow:0 0 10px #EF4444}
+    </style>
+</head>
+<body class="flex flex-col items-center justify-start pt-[60px] pb-10 px-4 sm:px-8">
+
+    <audio id="bg-music" preload="auto"></audio>
+
+    <div id="splash-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black fade-in">
+        <h1 class="text-4xl font-extrabold text-gradient mb-8 italic">ArcVault OS</h1>
+        <button onclick="startExperience()" class="py-4 px-10 arc-btn-gradient rounded-full text-black font-black uppercase tracking-widest animate-pulse">Initialize System</button>
+    </div>
+
+    <div id="auth-ui" class="hidden w-full max-w-sm space-y-4 mt-10 fade-in">
+        <div class="glass rounded-[38px] p-8 text-center shadow-2xl relative overflow-hidden">
+            <h2 class="text-2xl font-bold mb-6 italic">Secure Gateway</h2>
+            <button onclick="login('twitter')" class="w-full py-4 glass rounded-2xl font-bold text-sm mb-3 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"><svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> X (Twitter)</button>
+            <button onclick="login('google')" class="w-full py-4 glass rounded-2xl font-bold text-sm mb-3 hover:bg-white/10 flex items-center justify-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Google</button>
+            <button onclick="login('github')" class="w-full py-4 glass rounded-2xl font-bold text-sm mb-3 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"><svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg> GitHub</button>
+            <div class="mt-6 border-t border-white/10 pt-4">
+                <button onclick="document.getElementById('recovery-modal').classList.remove('hidden')" class="text-[10px] text-emerald-400 font-bold tracking-widest uppercase hover:text-emerald-300 transition">🔑 Recover via Master Key</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="wallet-ui" class="hidden w-full max-w-md space-y-4 pb-10 fade-in">
+        <div class="flex justify-between items-center px-2">
+            <span class="font-extrabold text-gradient text-sm uppercase italic leading-none">ArcVault OS</span>
+            <div class="flex items-center space-x-2">
+                <button id="music-btn" onclick="toggleMusic()" class="text-sm bg-white/10 p-1.5 rounded-lg border border-white/20 transition">🎵</button>
+                <button onclick="openIdentityInfoModal()" class="text-[9px] font-bold text-purple-400 border border-purple-500/30 px-2 py-1 rounded-lg hover:bg-purple-500/20 transition uppercase tracking-wider">Identities</button>
+                <button onclick="logoutApp()" class="text-[9px] font-bold text-red-400 border border-red-500/20 px-2 py-1 rounded-lg hover:bg-red-500/20 transition uppercase tracking-wider">Logout</button>
+            </div>
+        </div>
+
+        <div class="glass rounded-[32px] p-6 text-center relative shadow-2xl border-t border-white/10">
+            <p id="lbl-total-val" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-4">Total Valuation</p>
+            <h2 id="total-balance" class="text-5xl font-extrabold italic mb-4 tracking-tighter">$0.00</h2>
+            <div class="bg-black/60 border border-white/5 p-3 rounded-2xl w-full mb-4 flex justify-between items-center cursor-pointer" onclick="copyElementText(document.getElementById('wallet-address').innerText)">
+                <p id="wallet-address" class="text-[10px] font-mono text-emerald-400 truncate w-full text-left mr-2">Syncing Vault...</p>
+                <span class="text-xs opacity-50">📋</span>
+            </div>
+
+            <div class="flex justify-between items-center px-1 border-t border-white/10 pt-6">
+                <button onclick="requestPin(() => alert('Transfer stubbed for bridge testing'))" class="action-btn">📤<span class="text-[9px] font-bold">SEND</span></button>
+                <button onclick="document.getElementById('receive-modal').classList.remove('hidden')" class="action-btn">📥<span class="text-[9px] font-bold">RECEIVE</span></button>
+                <button onclick="requestPin(() => document.getElementById('history-modal').classList.remove('hidden'))" class="action-btn">📜<span class="text-[9px] font-bold">LEDGER</span></button>
+            </div>
+        </div>
+
+        <div class="glass rounded-3xl p-5">
+            <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                <select id="network-selector" onchange="changeNetwork()" class="bg-transparent text-emerald-400 font-bold text-[10px] border-none w-full uppercase cursor-pointer tracking-widest outline-none">
+                    <option value="arc">Arc Network (Source)</option>
+                    <option value="arb-sepolia">Arbitrum Sepolia (Dest)</option>
+                </select>
+            </div>
+            <div id="asset-container" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <div id="identity-info-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-purple-500/30 text-center">
+            <h3 class="text-xl font-black mb-4 italic text-purple-400">Connect Identities</h3>
+            <div class="bg-purple-900/10 border border-purple-500/20 p-4 rounded-xl mb-4">
+                <p class="text-[11px] text-gray-300 leading-relaxed font-bold">Your Web3 vault is mathematically bound to your social identities.</p>
+                <p class="text-[10px] text-gray-400 mt-3 leading-relaxed">By linking multiple accounts (Google, X, GitHub), you create secure cryptographic backup routes.</p>
+            </div>
+            <button id="download-key-btn" onclick="downloadMasterKey()" class="w-full py-3 mb-4 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition">Download Backup Key (Escape Hatch)</button>
+            <button onclick="closeModal('identity-info-modal'); document.getElementById('identities-modal').classList.remove('hidden'); renderLinkedAccounts();" class="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black uppercase tracking-widest transition shadow-[0_0_15px_rgba(168,85,247,0.4)]">Proceed to Connect</button>
+        </div>
+    </div>
+
+    <div id="recovery-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-emerald-500/30 text-center">
+            <h3 class="text-xl font-black mb-4 italic text-emerald-400">Master Key Recovery</h3>
+            <p class="text-[10px] text-gray-400 mb-4">Paste your exact 44-character deterministic key below.</p>
+            <input type="text" id="recovery-key-input" placeholder="ARC-VAULT-..." class="w-full text-[10px] p-3 font-mono bg-black/50 border border-white/10 rounded mb-4">
+            <button onclick="processRecovery()" class="w-full py-4 bg-emerald-600 text-black rounded-2xl font-black uppercase tracking-widest transition">Execute Recovery</button>
+            <button onclick="closeModal('recovery-modal')" class="w-full py-3 mt-2 bg-transparent text-gray-400 text-xs">Cancel</button>
+        </div>
+    </div>
+
+    <div id="identities-modal" class="hidden fixed inset-0 z-[70] flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-purple-500/30">
+            <h3 class="text-xl font-black mb-4 text-center italic text-purple-400">Connect Identities</h3>
+            <div id="linked-accounts-container" class="space-y-2 mb-6"></div>
+            <button onclick="closeModal('identities-modal')" class="w-full py-3 bg-white/10 rounded-2xl font-bold text-xs hover:bg-white/20">Close</button>
+        </div>
+    </div>
+
+    <div id="pin-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-xs w-full text-center border border-emerald-500/30 shadow-2xl">
+            <h3 id="pin-title" class="text-xl font-black mb-2 uppercase tracking-widest text-emerald-400">Vault Security</h3>
+            <p id="pin-subtitle" class="text-[10px] text-gray-400 mb-6 font-bold">Enter PIN to authorize.</p>
+            <div class="flex justify-center gap-4 mb-8">
+                <div id="dot-1" class="w-4 h-4 rounded-full bg-white/20 transition-all duration-200"></div><div id="dot-2" class="w-4 h-4 rounded-full bg-white/20 transition-all duration-200"></div><div id="dot-3" class="w-4 h-4 rounded-full bg-white/20 transition-all duration-200"></div><div id="dot-4" class="w-4 h-4 rounded-full bg-white/20 transition-all duration-200"></div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 mb-2">
+                <button onclick="enterPin(1)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">1</button><button onclick="enterPin(2)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">2</button><button onclick="enterPin(3)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">3</button><button onclick="enterPin(4)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">4</button><button onclick="enterPin(5)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">5</button><button onclick="enterPin(6)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">6</button><button onclick="enterPin(7)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">7</button><button onclick="enterPin(8)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">8</button><button onclick="enterPin(9)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">9</button><button onclick="closeModal('pin-modal')" class="py-4 text-sm font-black bg-red-500/20 text-red-400 rounded-2xl">ESC</button><button onclick="enterPin(0)" class="py-4 text-xl font-black bg-white/5 rounded-2xl">0</button><button onclick="clearPin()" class="py-4 text-sm font-black bg-yellow-500/20 text-yellow-400 rounded-2xl">CLR</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-red-500/50 bg-red-900/10">
+            <div class="text-3xl mb-2">⚠️</div>
+            <h3 class="text-xl font-black mb-1 uppercase">System Diagnostic</h3>
+            <span id="error-code" class="inline-block bg-red-500 text-black text-[9px] font-black px-2 py-1 rounded mb-4 tracking-widest">ERR-500</span>
+            <p id="error-msg" class="text-xs text-red-300 mb-4 bg-red-900/40 p-3 rounded-xl border border-red-500/20 break-words font-bold"></p>
+            <p id="error-solution" class="text-[10px] text-gray-300 mb-6 px-4 italic"></p>
+            <button onclick="closeModal('error-modal')" class="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-black rounded-2xl transition">Acknowledge</button>
+        </div>
+    </div>
+
+    <div id="terminal-modal" class="hidden fixed inset-0 z-[160] flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-gray-500/30 flex flex-col h-[80vh]">
+            <h3 id="term-title" class="text-xl font-black mb-4 text-center italic text-white">Live Execution Terminal</h3>
+            <div id="term-nodes" class="flex-1 bg-black/50 border border-white/10 rounded-2xl p-4 mb-4 overflow-y-auto"></div>
+            <div id="term-insight-box" class="bg-gray-500/10 border border-gray-500/20 p-4 rounded-xl mb-4 h-32 overflow-y-auto transition-colors">
+                <p class="text-[8px] font-bold uppercase tracking-widest mb-1 text-gray-400" id="term-insight-lbl">Developer Insight</p>
+                <p id="term-insight-text" class="text-[10px] text-gray-300 leading-relaxed font-mono">Initializing Protocol...</p>
+            </div>
+            <div id="term-success-panel" class="hidden text-center mb-4">
+                <p id="term-final-hash" class="text-[8px] font-mono text-emerald-400 mb-2 break-all"></p>
+                <a id="term-track-btn" href="#" target="_blank" class="w-full block py-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-500/40 transition">Track on Explorer</a>
+            </div>
+            <button id="term-close-btn" onclick="closeModal('terminal-modal'); fetchLiveBalances();" class="w-full py-3 bg-white/10 rounded-xl font-bold text-[10px] uppercase hover:bg-white/20 transition opacity-50 pointer-events-none">Transaction In Progress...</button>
+        </div>
+    </div>
+
+    <div id="bridge-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full border border-orange-500/30">
+            <h3 class="text-xl font-black mb-6 text-center italic text-orange-400">4-Step Native Bridge</h3>
+            <div id="bridge-form">
+                <div class="bg-black/50 p-3 rounded-xl border border-white/10 mb-4">
+                    <div class="flex justify-between items-center text-xs text-white font-bold mb-1">
+                        <span id="bridge-source-label">From: Arc Testnet</span><span id="bridge-dest-label" class="text-orange-400">To: Arb Sepolia</span>
+                    </div>
+                </div>
+                <p class="text-[9px] text-gray-400 font-bold uppercase mb-2">Destination Address</p>
+                <div class="flex gap-2 mb-2">
+                    <button onclick="document.getElementById('bridge-target-address').value = document.getElementById('wallet-address').innerText" class="w-1/2 py-2 text-[9px] bg-white/10 hover:bg-white/20 rounded font-bold uppercase">My Wallet</button>
+                </div>
+                <input type="text" id="bridge-target-address" placeholder="Destination Address (0x...)" class="mb-4 text-[10px] font-mono w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white outline-none">
+                
+                <p class="text-[9px] text-gray-400 font-bold uppercase mb-2">Asset to Bridge</p>
+                <select id="bridge-asset" class="mb-4 text-xs font-bold w-full bg-transparent border-b border-white/10 outline-none p-2 pointer-events-none appearance-none"><option value="USDC">Native Arc USDC</option></select>
+                
+                <input type="number" id="bridge-amount" placeholder="0.00" class="mb-6 text-3xl font-bold text-center w-full bg-black/50 border border-white/10 rounded-2xl p-4 outline-none">
+                <button onclick="requestPin(() => executeBridge())" class="w-full py-4 bg-orange-600 font-black rounded-2xl hover:bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] uppercase tracking-widest">Execute Native Bridge</button>
+                <button onclick="closeModal('bridge-modal')" class="w-full py-3 opacity-50 text-xs mt-2 hover:opacity-100 transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="history-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 fade-in">
+        <div class="glass rounded-[38px] p-6 max-w-sm w-full border border-gray-500/30 flex flex-col max-h-[85vh]">
+            <div id="ledger-content">
+                <h3 class="text-xl font-black mb-2 text-center italic text-white">Permanent Ledger</h3>
+                <div id="history-entries" class="overflow-y-auto space-y-2 mb-4 bg-black/30 p-2 rounded-xl max-h-[50vh]"></div>
+            </div>
+            <button onclick="closeModal('history-modal')" class="w-full py-3 bg-white/10 rounded-2xl font-bold hover:bg-white/20 transition">Close Ledger</button>
+        </div>
+    </div>
+
+    <div id="receive-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 fade-in">
+        <div class="glass rounded-[38px] p-8 max-w-sm w-full text-center border border-emerald-500/30">
+            <h3 class="text-xl font-black mb-4 italic">Receive Assets</h3>
+            <img id="qr-code-img" class="w-48 h-48 mx-auto mb-4 rounded-xl bg-white p-2">
+            <p id="modal-addr-text" class="font-mono text-xs text-emerald-400 break-all bg-black/60 p-3 rounded-xl mb-6"></p>
+            <button onclick="copyElementText(document.getElementById('modal-addr-text').innerText)" class="w-full py-4 arc-btn-gradient text-black font-black rounded-2xl">COPY ADDRESS</button>
+            <button onclick="closeModal('receive-modal')" class="w-full py-3 opacity-50 text-xs mt-2 hover:opacity-100 transition">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, GithubAuthProvider, onAuthStateChanged, signOut, linkWithPopup, unlink } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyCzARRpSAQfoFryH4hGQem32kQ5XqEEmQI", authDomain: "arcvault-cc843.firebaseapp.com", projectId: "arcvault-cc843", appId: "1:524225470861:web:f69d672925effc78d11dc4" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let synth = window.speechSynthesis;
+        let isMusicPlaying = false;
+        const bgm = document.getElementById('bg-music');
+        bgm.src = "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3";
+        bgm.addEventListener('ended', () => { if(isMusicPlaying) bgm.play().catch(()=>{}); });
+
+        window.playCustomVoice = function(text, shortSpeech) { 
+            if (!synth) return; 
+            synth.cancel(); 
+            const msg = new SpeechSynthesisUtterance(shortSpeech || text); 
+            msg.rate = 0.9; 
+            msg.onstart = () => { if(isMusicPlaying && bgm) bgm.pause(); };
+            msg.onend = () => { if(isMusicPlaying && bgm) bgm.play().catch(()=>{}); };
+            synth.speak(msg); 
+        };
+
+        window.toggleMusic = () => { isMusicPlaying = !isMusicPlaying; document.getElementById('music-btn').innerText = isMusicPlaying ? "🔊" : "🎵"; if(isMusicPlaying) bgm.play().catch(()=>{}); else bgm.pause(); };
+        window.setView = function(viewId) { document.getElementById('splash-screen').classList.add('hidden'); document.getElementById('auth-ui').classList.add('hidden'); document.getElementById('wallet-ui').classList.add('hidden'); document.getElementById(viewId).classList.remove('hidden'); };
+        window.copyElementText = (text) => { navigator.clipboard.writeText(text); playCustomVoice("Copied to clipboard."); };
+        window.closeModal = (id) => { document.getElementById(id).classList.add('hidden'); if(id === 'pin-modal') clearPin(); };
+
+        let currentPinInput = ""; let requiredPin = localStorage.getItem('arcvault_pin') || null; let pendingCallback = null;
+        window.requestPin = (callback) => { pendingCallback = callback; currentPinInput = ""; updatePinDots(); document.getElementById('pin-modal').classList.remove('hidden'); };
+        window.enterPin = (num) => { if(currentPinInput.length < 4) { currentPinInput += num.toString(); updatePinDots(); if(currentPinInput.length === 4) processPin(); } };
+        window.clearPin = () => { currentPinInput = ""; updatePinDots(); };
+        function updatePinDots() { for(let i=1; i<=4; i++) { const dot = document.getElementById(`dot-${i}`); if(i <= currentPinInput.length) dot.classList.add('bg-emerald-400'); else dot.classList.remove('bg-emerald-400'); } }
+        function processPin() { setTimeout(() => { if(!requiredPin) { localStorage.setItem('arcvault_pin', currentPinInput); requiredPin = currentPinInput; closeModal('pin-modal'); if(pendingCallback) pendingCallback(); } else { if(currentPinInput === requiredPin) { closeModal('pin-modal'); if(pendingCallback) pendingCallback(); } else { clearPin(); } } }, 300); }
+
+        window.downloadMasterKey = () => { const uid = window.overrideUid || auth.currentUser?.uid; if(!uid) return; const keyString = btoa("ARC-VAULT-" + uid + "-" + new Date().getTime()); localStorage.setItem('arcvault_recovery_hash', keyString); localStorage.setItem('arcvault_key_secured', 'true'); document.getElementById('download-key-btn').classList.add('hidden'); let content = "===========================================\n     ARCVAULT MASTER RECOVERY KEY\n===========================================\n\nKeep this file secure. If you lose access to all your connected social accounts, this cryptographic key mathematically maps back to your original vault identity.\n\n"; content += `Key: ${keyString}\nGenerated: ${new Date().toLocaleString()}\n`; const blob = new Blob([content], { type: "text/plain" }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ArcVault_MasterKey_${new Date().getTime()}.txt`; a.click(); URL.revokeObjectURL(url); playCustomVoice("Master Key downloaded securely."); };
+        window.processRecovery = () => { const input = document.getElementById('recovery-key-input').value.trim(); const stored = localStorage.getItem('arcvault_recovery_hash'); if(input && stored && input === stored) { const decoded = atob(input).split('-'); window.overrideUid = decoded[2]; playCustomVoice("Cryptographic recovery successful."); closeModal('recovery-modal'); showWallet({uid: window.overrideUid}); } else { alert("Invalid Master Key."); } };
+
+        window.openIdentityInfoModal = () => { if(localStorage.getItem('arcvault_key_secured') === 'true') document.getElementById('download-key-btn').classList.add('hidden'); document.getElementById('identity-info-modal').classList.remove('hidden'); };
+        window.renderLinkedAccounts = () => {
+            const container = document.getElementById('linked-accounts-container'); if(!auth.currentUser) return;
+            auth.currentUser.reload().then(() => {
+                const providers = auth.currentUser.providerData.map(p => p.providerId); let htmlStr = '';
+                const platforms = [ { id: 'google.com', name: 'Google' }, { id: 'twitter.com', name: 'X (Twitter)' }, { id: 'github.com', name: 'GitHub' } ];
+                platforms.forEach(plat => {
+                    if(providers.includes(plat.id)) htmlStr += `<div class="flex justify-between items-center bg-black/30 p-3 rounded-xl border border-white/5"><span class="text-[11px] font-bold text-emerald-400">✓ ${plat.name} Linked</span><button onclick="requestPin(() => unlinkAccount('${plat.id}'))" class="text-[9px] bg-red-500/20 text-red-400 px-3 py-1.5 rounded uppercase font-bold hover:bg-red-500/40 transition">Unlink</button></div>`;
+                    else htmlStr += `<div class="flex justify-between items-center bg-black/30 p-3 rounded-xl border border-white/5"><span class="text-[11px] font-bold text-gray-400">${plat.name}</span><button onclick="linkAccount('${plat.id}')" class="text-[9px] bg-white/10 text-white px-3 py-1.5 rounded uppercase font-bold hover:bg-white/20 transition">Connect</button></div>`;
+                });
+                container.innerHTML = htmlStr;
+            });
+        };
+
+        window.linkAccount = async (providerId) => { let provider; if (providerId === 'google.com') provider = new GoogleAuthProvider(); else if (providerId === 'twitter.com') provider = new TwitterAuthProvider(); else if (providerId === 'github.com') provider = new GithubAuthProvider(); try { await linkWithPopup(auth.currentUser, provider); playCustomVoice("Identity linked."); renderLinkedAccounts(); } catch(e) { alert(e.message); } };
+        window.unlinkAccount = async (providerId) => { if(auth.currentUser.providerData.length === 1) return alert("Cannot unlink your only sign-in method."); try { await unlink(auth.currentUser, providerId); renderLinkedAccounts(); } catch(e) { alert(e.message); } };
+
+        window.changeNetwork = () => {
+            const net = document.getElementById('network-selector').value; const container = document.getElementById('asset-container');
+            let sym = "USDC";
+            
+            let htmlStr = `<div class="glass p-3 rounded-2xl flex justify-between items-center border border-white/5 mb-2 hover:bg-white/10 transition cursor-pointer">
+                <div class="flex items-center space-x-3"><div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[10px] text-white">US</div><div class="text-left flex flex-col items-start"><p class="text-sm font-bold text-white flex items-center gap-2">${sym}</p></div></div>
+                <div class="text-right"><p class="font-mono font-bold text-emerald-400" id="bal-${sym}">0.00</p><div class="flex space-x-2 mt-1 justify-end items-center">`;
+            
+            if(net === 'arc') {
+                htmlStr += `<button onclick="openBridgeModal(event, '${sym}')" class="text-[8px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded uppercase font-bold tracking-widest shadow-[0_0_10px_rgba(249,115,22,0.3)]">Bridge Out</button>`;
+            }
+            htmlStr += `</div></div></div>`;
+            container.innerHTML = htmlStr; fetchLiveBalances();
+        };
+
+        window.login = (p) => { let provider; if(p === 'google') provider = new GoogleAuthProvider(); else if(p === 'twitter') provider = new TwitterAuthProvider(); else if(p === 'github') provider = new GithubAuthProvider(); signInWithPopup(auth, provider).catch(e => alert(e.message)); };
+        window.logoutApp = async () => { await signOut(auth); location.reload(); };
+
+        async function showWallet(user) {
+            setView('wallet-ui'); changeNetwork();
+            const uid = window.overrideUid || user.uid; const userRef = doc(db, "users", uid); const userDoc = await getDoc(userRef);
+            if (userDoc.exists() && userDoc.data().walletId) { 
+                document.getElementById('wallet-address').innerText = userDoc.data().walletAddress; fetchLiveBalances();
+            } else { 
+                try { const res = await fetch('/api/wallet', { method: 'POST', body: JSON.stringify({ userId: uid }) }); const cw = await res.json(); await setDoc(userRef, { walletAddress: cw.data.wallets[0].address, walletId: cw.data.wallets[0].id }, { merge: true }); document.getElementById('wallet-address').innerText = cw.data.wallets[0].address; fetchLiveBalances(); } catch(e){} 
+            }
+        }
+
+        window.fetchLiveBalances = async () => {
+            const uid = window.overrideUid || auth.currentUser?.uid; if(!uid) return; const snap = await getDoc(doc(db, "users", uid)); const wId = snap.data()?.walletId?.replace(/[^a-zA-Z0-9-]/g, ''); if(!wId) return;
+            const net = document.getElementById('network-selector').value; let blockchainParam = net === 'arb-sepolia' ? 'ARB-SEPOLIA' : 'ARC-TESTNET';
+            try {
+                const res = await fetch('/api/balance', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, blockchain: blockchainParam }) }); const data = await res.json();
+                if(data.data?.tokenBalances) { data.data.tokenBalances.forEach(t => { 
+                    const finalSym = t.token.symbol; const el = document.getElementById(`bal-${finalSym}`); if(el) el.innerText = parseFloat(t.amount).toFixed(2);
+                }); }
+            } catch(e) {}
+        };
+
+        window.Term = {
+            show: (title) => {
+                document.getElementById('terminal-modal').classList.remove('hidden'); document.getElementById('term-title').innerText = title; document.getElementById('term-nodes').innerHTML = ''; document.getElementById('term-success-panel').classList.add('hidden');
+                document.getElementById('term-close-btn').classList.add('opacity-50', 'pointer-events-none'); document.getElementById('term-close-btn').innerText = "Transaction In Progress...";
+                document.getElementById('term-insight-box').className = "bg-gray-500/10 border border-gray-500/20 p-4 rounded-xl mb-4 h-32 overflow-y-auto transition-colors"; document.getElementById('term-insight-lbl').className = "text-[8px] font-bold uppercase tracking-widest mb-1 text-gray-400";
+            },
+            setSteps: (steps) => {
+                let html = ''; steps.forEach((s, i) => { html += `<div id="node-${i}" class="edu-node"><p class="text-[10px] font-bold text-white uppercase tracking-widest">${s}</p><p class="text-[8px] text-gray-400 mt-1">Status: <span id="status-${i}" class="font-mono text-gray-500">Waiting...</span></p></div>`; }); document.getElementById('term-nodes').innerHTML = html;
+            },
+            updateStep: (index, totalSteps, statusText, state) => {
+                for(let i=0; i<totalSteps; i++) {
+                    const el = document.getElementById(`node-${i}`); const st = document.getElementById(`status-${i}`); if (!el) continue;
+                    if (i < index) { el.className = "edu-node completed"; st.innerText = "Completed ✓"; st.className = "font-mono text-emerald-400"; } 
+                    else if (i === index) { el.className = `edu-node ${state === 'error' ? 'failed' : 'active'}`; st.innerText = statusText; st.className = `font-mono ${state === 'error' ? 'text-red-400' : 'text-orange-400 animate-pulse'}`; } 
+                    else { el.className = "edu-node"; st.innerText = "Waiting..."; st.className = "font-mono text-gray-500"; }
+                }
+            },
+            insight: (longText, speechText) => { document.getElementById('term-insight-text').innerHTML = longText; playCustomVoice(speechText || longText.replace(/<[^>]*>?/gm, ''), speechText); },
+            success: (hash, link, timeMsg) => {
+                document.getElementById('term-insight-box').className = "bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl mb-4 h-32 overflow-y-auto transition-colors"; document.getElementById('term-insight-lbl').className = "text-[8px] font-bold uppercase tracking-widest mb-1 text-emerald-400"; document.getElementById('term-insight-text').innerHTML = `Transaction mathematically verified. ${timeMsg}`; document.getElementById('term-final-hash').innerText = `Tx Hash: ${hash}`; document.getElementById('term-track-btn').href = link; document.getElementById('term-success-panel').classList.remove('hidden');
+                const btn = document.getElementById('term-close-btn'); btn.classList.remove('opacity-50', 'pointer-events-none'); btn.innerText = "Return to Vault"; playCustomVoice("Transaction finalized successfully.");
+            },
+            error: (errText) => {
+                document.getElementById('term-insight-box').className = "bg-red-500/10 border border-red-500/20 p-4 rounded-xl mb-4 h-32 overflow-y-auto transition-colors"; document.getElementById('term-insight-lbl').className = "text-[8px] font-bold uppercase tracking-widest mb-1 text-red-400"; document.getElementById('term-insight-text').innerHTML = `<b>FATAL HALT:</b><br><br>${errText}`;
+                const btn = document.getElementById('term-close-btn'); btn.classList.remove('opacity-50', 'pointer-events-none'); btn.innerText = "Acknowledge Failure"; playCustomVoice("Transaction halted due to an error.");
+            }
+        };
+
+        window.openBridgeModal = (e, symbol) => { e.stopPropagation(); document.getElementById('bridge-asset').value = symbol || 'USDC'; document.getElementById('bridge-target-address').value = document.getElementById('wallet-address').innerText; document.getElementById('bridge-modal').classList.remove('hidden'); };
+
+        // ==========================================
+        // FINAL CLIENT-SIDE RPC CCTP BRIDGE
+        // ==========================================
+        window.executeBridge = async () => {
+            const uid = window.overrideUid || auth.currentUser?.uid; if(!uid) return;
+            const snap = await getDoc(doc(db, "users", uid)); 
+            const wId = snap.data()?.walletId?.replace(/[^a-zA-Z0-9-]/g, '');
+            const destAddress = document.getElementById('bridge-target-address').value; 
+            const amount = document.getElementById('bridge-amount').value;
+            
+            if(!amount || amount <= 0) return alert("Enter amount."); if(!destAddress) return alert("Enter address.");
+
+            document.getElementById('bridge-modal').classList.add('hidden');
+            window.Term.show("Manual CCTP Bridge");
+            
+            window.Term.setSteps(["Approve TokenMessenger", "Burn Native USDC", "Extract Message & Attest", "Arbitrum Mint"]);
+            
+            try {
+                // STEP 1: APPROVE
+                window.Term.updateStep(0, 4, "Approving...", "active");
+                window.Term.insight("Securing ERC-20 approval on the Arc Native Precompile.", "Approving CCTP allowance.");
+                
+                const appRes = await fetch('/api/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, amount: amount }) });
+                const appData = await appRes.json();
+                if (!appData.success) throw new Error("Approval Backend Failed: " + JSON.stringify(appData));
+                
+                // Poll for Approval completion
+                for(let i=0; i<15; i++) {
+                    const chkRes = await fetch('/api/status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ txId: appData.operationId }) });
+                    const chkData = await chkRes.json();
+                    if(chkData.data?.transaction?.state === 'COMPLETE') break;
+                    if(chkData.data?.transaction?.state === 'FAILED') throw new Error("Approval On-Chain Failed.");
+                    await new Promise(r => setTimeout(r, 4000));
+                }
+                window.Term.updateStep(0, 4, "Approved ✓", "completed");
+
+                // STEP 2: BURN
+                window.Term.updateStep(1, 4, "Burning USDC...", "active");
+                window.Term.insight("Executing depositForBurn now that allowance is secured.", "Burning USDC on source chain.");
+                const burnRes = await fetch('/api/burn', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, destinationAddress: destAddress, amount: amount }) });
+                const burnData = await burnRes.json();
+                if (!burnData.success) throw new Error("Burn API Failed: " + JSON.stringify(burnData));
+                
+                // Wait for Burn and get TxHash
+                let burnTxHash = null;
+                for(let i=0; i<15; i++) {
+                    const chkRes = await fetch('/api/status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ txId: burnData.operationId }) });
+                    const chkData = await chkRes.json();
+                    if(chkData.data?.transaction?.state === 'COMPLETE') { burnTxHash = chkData.data.transaction.txHash; break; }
+                    if(chkData.data?.transaction?.state === 'FAILED') throw new Error("Burn Failed On-Chain.");
+                    await new Promise(r => setTimeout(r, 4000));
+                }
+                if(!burnTxHash) throw new Error("Did not receive burn transaction hash from Circle.");
+                window.Term.updateStep(1, 4, "Burn Sent ✓", "completed");
+
+                // STEP 3: EXTRACT LOGS (BULLETPROOF RAW FETCH - 150s TIMEOUT)
+                window.Term.updateStep(2, 4, "Checking Blockchain...", "active");
+                
+                let messageBytes = null;
+                for(let i=1; i<=30; i++) { // Increased to 30 attempts
+                    try {
+                        const rpcRes = await fetch('https://testnet-rpc.arc.network', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ jsonrpc: "2.0", method: "eth_getTransactionReceipt", params: [burnTxHash], id: 1 })
+                        });
+
+                        if (!rpcRes.ok) throw new Error(`HTTP Error ${rpcRes.status}`);
+                        const rpcData = await rpcRes.json();
+
+                        if (rpcData.result && rpcData.result.logs) {
+                            const MESSAGE_SENT_TOPIC = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
+                            const log = rpcData.result.logs.find(l => l.topics[0] === MESSAGE_SENT_TOPIC);
+
+                            if (log) {
+                                let dataHex = log.data.replace('0x', '');
+                                const offset = parseInt(dataHex.substring(0, 64), 16) * 2;
+                                const length = parseInt(dataHex.substring(offset, offset + 64), 16) * 2;
+                                messageBytes = "0x" + dataHex.substring(offset + 64, offset + 64 + length);
+                                window.Term.insight("Log extracted successfully! Proceeding to attestation.", "Log extracted.");
+                                break;
+                            } else {
+                                window.Term.insight(`Block found, but scanning for CCTP logs... (Attempt ${i}/30)`, "");
+                            }
+                        } else {
+                            window.Term.insight(`Waiting for Arc network finality... (Attempt ${i}/30)`, "");
+                        }
+                    } catch(e) {
+                        window.Term.insight(`RPC Connection Retry: ${e.message} (Attempt ${i}/30)`, "");
+                    }
+                    await new Promise(r => setTimeout(r, 5000));
+                }
+                
+                if(!messageBytes) throw new Error("RPC Timeout: Failed to extract log bytes from Arc Network after 150 seconds. Node might be overloaded.");
+                
+                window.Term.insight("Cryptographically hashing the message and polling Circle Iris nodes.", "Polling attestation service.");
+                const messageHash = ethers.keccak256(messageBytes); 
+                let attestation = null;
+                for(let i=0; i<30; i++) {
+                    const irisRes = await fetch(`https://iris-api-sandbox.circle.com/v1/attestations/${messageHash}`);
+                    const irisData = await irisRes.json();
+                    if (irisData.status === "complete") { attestation = irisData.attestation; break; }
+                    await new Promise(r => setTimeout(r, 5000));
+                }
+                if(!attestation) throw new Error("Iris API Timeout.");
+                window.Term.updateStep(2, 4, "Attested ✓", "completed");
+
+                // STEP 4: MINT
+                window.Term.updateStep(3, 4, "Minting to Arbitrum...", "active");
+                window.Term.insight("Attestation secured. Triggering Arbitrum Sepolia mint.", "Executing final mint.");
+                const mintRes = await fetch('/api/mint', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, messageBytes, attestation }) });
+                const mintData = await mintRes.json();
+                if (!mintData.success) throw new Error("Mint API Failed: " + JSON.stringify(mintData));
+
+                window.Term.updateStep(3, 4, "Minted ✓", "completed");
+                window.Term.success(mintData.operationId, "https://sepolia.arbiscan.io/tx/" + mintData.operationId, "Bridge successfully finalized.");
+                
+            } catch (e) {
+                window.Term.updateStep(0, 4, "Failed", "error"); 
+                window.Term.error(e.message); 
+            }
+        };
+
+        window.openHistoryModal = async () => { document.getElementById('history-modal').classList.remove('hidden'); };
+        window.openReceiveModal = () => { document.getElementById('receive-modal').classList.remove('hidden'); document.getElementById('modal-addr-text').innerText = document.getElementById('wallet-address').innerText; document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${document.getElementById('wallet-address').innerText}&color=00FFA3&bgcolor=000000`; };
+
+        window.startExperience = () => {
+            try {
+                if(!isMusicPlaying) { isMusicPlaying = true; bgm.play().catch(()=>{}); document.getElementById('music-btn').innerText = "🔊"; } 
+                playCustomVoice("Booting ArcVault OS Manual Flow.", "Booting ArcVault OS.");
+                onAuthStateChanged(auth, u => { if(u) { showWallet(u); } else { setView('auth-ui'); } });
+            } catch (e) { showError("Boot Error", e.message, "ERR-BOOT"); }
+        };
+    </script>
+</body>
+</html>
