@@ -464,7 +464,8 @@
                 }
 
                 if (!txHash) {
-                    throw new Error("txHash not found after polling");
+                   console.log("Still waiting for txHash...");
+                   continue;
                 }
                 
                 console.log("TX HASH FOUND:", txHash);
