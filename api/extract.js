@@ -1,56 +1,89 @@
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     try {
         const { operationId } = req.body;
 
         if (!operationId) {
-            return res.status(400).json({ error: "Missing operationId" });
+            return res.status(400).json({
+                success: false,
+                error: "Missing operationId"
+            });
         }
 
-        // Step 1: Get operation
-        const opRes = await fetch(
+        console.log("🔍 Checking operation:", operationId);
+
+        // 🔥 PRIMARY: operations endpoint (FAST + RELIABLE)
+        let circleRes = await fetch(
             `https://api.circle.com/v1/w3s/operations/${operationId}`,
             {
+                method: "GET",
                 headers: {
                     Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`
                 }
             }
         );
 
-        const opData = await opRes.json();
+        let data = await circleRes.json();
 
-        // If still processing → wait
-        if (opData?.data?.state !== "COMPLETE") {
-            return res.status(200).json({ pending: true });
-        }
+        // 🔁 FALLBACK (important)
+        if (!circleRes.ok || !data?.data) {
+            console.log("⚠️ fallback to transactions API");
 
-        // Step 2: Fetch transactions list (THIS IS THE REAL FIX)
-        const txRes = await fetch(
-            `https://api.circle.com/v1/w3s/transactions`,
-            {
-                headers: {
-                    Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`
+            const txRes = await fetch(
+                `https://api.circle.com/v1/w3s/transactions/${operationId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`
+                    }
                 }
+            );
+
+            if (txRes.ok) {
+                data = await txRes.json();
             }
-        );
-
-        const txData = await txRes.json();
-
-        const tx = txData?.data?.transactions?.find(
-            (t) => t.operationId === operationId
-        );
-
-        if (!tx || !tx.transactionHash) {
-            return res.status(200).json({ pending: true });
         }
+
+        console.log("📦 Circle data:", JSON.stringify(data));
+
+        // 🔥 EXTRACT txHash from ANY possible location
+        const txHash =
+            data?.data?.transactionHash ||
+            data?.data?.txHash ||
+            data?.data?.blockchainTransactionHash ||
+            data?.data?.result?.txHash ||
+            data?.data?.result?.transactionHash ||
+            null;
+
+        // ⏳ still pending
+        if (!txHash) {
+            return res.status(200).json({
+                success: false,
+                pending: true
+            });
+        }
+
+        console.log("✅ TX FOUND:", txHash);
 
         return res.status(200).json({
             success: true,
-            txHash: tx.transactionHash
+            txHash
         });
 
     } catch (e) {
-        return res.status(500).json({ error: e.message });
+        console.error("❌ EXTRACT ERROR:", e);
+
+        return res.status(200).json({
+            success: false,
+            pending: true,
+            error: e.message
+        });
     }
 }
