@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { parseUnits } from "ethers";
 
 export const config = { runtime: "nodejs" };
 
@@ -31,14 +32,10 @@ export default async function handler(req, res) {
             Buffer.from(process.env.CIRCLE_ENTITY_SECRET, "hex")
         );
 
-        // 💰 correct amount
-        const rawAmount = (parseFloat(amount) * 1e6).toFixed(0);
+        // ✅ FIXED: exact USDC amount (6 decimals safe)
+        const rawAmount = parseUnits(amount.toString(), 6).toString();
 
-        // 🔥 FIX: address → bytes32
-        const destBytes32 =
-            "0x" +
-            destinationAddress.toLowerCase().replace("0x", "").padStart(64, "0");
-
+        // ✅ FIXED: normal address (NO bytes32)
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
@@ -46,18 +43,15 @@ export default async function handler(req, res) {
 
             contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
 
-            // ✅ CORRECT ABI
+            // ✅ FIXED ABI (4 params ONLY)
             abiFunctionSignature:
-                "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
+                "depositForBurn(uint256,uint32,address,address)",
 
             abiParameters: [
-                rawAmount, // amount
-                3, // Arbitrum
-                destBytes32, // receiver
-                "0x3600000000000000000000000000000000000000", // USDC
-                "0x0000000000000000000000000000000000000000000000000000000000000000", // hookData
-                0, // maxFee
-                2000 // minFinality
+                rawAmount,
+                3, // Arbitrum Sepolia domain
+                destinationAddress,
+                "0x3600000000000000000000000000000000000000"
             ],
 
             feeLevel: "MEDIUM",
