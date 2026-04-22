@@ -18,9 +18,19 @@ export default async function handler(req, res) {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString('base64'),
             walletId: walletId, 
-            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA", // Arc TokenMessenger
-            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address)",
-            abiParameters: [rawAmount, "3", destBytes32, "0x3600000000000000000000000000000000000000"],
+            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA", // TokenMessengerV2
+            
+            // EXACT CCTP V2 SIGNATURE
+            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
+            abiParameters: [
+                rawAmount, 
+                "3", // Arbitrum Sepolia Domain
+                destBytes32, 
+                "0x3600000000000000000000000000000000000000", // Arc Native USDC
+                "0x0000000000000000000000000000000000000000000000000000000000000000", // Any Caller
+                "0", // Max Fee
+                "2000" // Min Finality Threshold
+            ],
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
         };
