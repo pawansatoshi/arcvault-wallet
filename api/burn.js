@@ -23,25 +23,18 @@ export default async function handler(req, res) {
 
         const rawAmount = Math.floor(parseFloat(amount) * 1e6).toString();
 
-        const destBytes32 =
-            "0x" +
-            destinationAddress.toLowerCase().replace("0x", "").padStart(64, "0");
-
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString('base64'),
             walletId,
             contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
             abiFunctionSignature:
-                "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
+                "depositForBurn(uint256,uint32,address,address)",
             abiParameters: [
                 rawAmount,
-                "3",
-                destBytes32,
-                "0x3600000000000000000000000000000000000000",
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "0",
-                "2000"
+                3,
+                destinationAddress,
+                "0x3600000000000000000000000000000000000000"
             ],
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
