@@ -1,42 +1,56 @@
-// /api/extract.js
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    if (req.method === 'OPTIONS') return res.status(200).end();
-
     try {
         const { operationId } = req.body;
 
         if (!operationId) {
-            return res.status(400).json({ success: false, error: "Missing operationId" });
+            return res.status(400).json({ error: "Missing operationId" });
         }
 
-        const circleRes = await fetch(`https://api.circle.com/v1/w3s/operations/${operationId}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}`,
-                'Content-Type': 'application/json'
+        // Step 1: Get operation
+        const opRes = await fetch(
+            `https://api.circle.com/v1/w3s/operations/${operationId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`
+                }
             }
+        );
+
+        const opData = await opRes.json();
+
+        // If still processing → wait
+        if (opData?.data?.state !== "COMPLETE") {
+            return res.status(200).json({ pending: true });
+        }
+
+        // Step 2: Fetch transactions list (THIS IS THE REAL FIX)
+        const txRes = await fetch(
+            `https://api.circle.com/v1/w3s/transactions`,
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`
+                }
+            }
+        );
+
+        const txData = await txRes.json();
+
+        const tx = txData?.data?.transactions?.find(
+            (t) => t.operationId === operationId
+        );
+
+        if (!tx || !tx.transactionHash) {
+            return res.status(200).json({ pending: true });
+        }
+
+        return res.status(200).json({
+            success: true,
+            txHash: tx.transactionHash
         });
 
-        let data = await circleRes.json();
-
-        // fallback
-        if (!circleRes.ok && circleRes.status === 404) {
-            const txRes = await fetch(`https://api.circle.com/v1/w3s/transactions/${operationId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}`
-                }
-            });
-            if (txRes.ok) {
-                data = await txRes.json();
-            }
-        }
-
-        const state = data?.data?.state;
-
-        // 🚨 HANDLE FAILURE (CRITICAL)
-        if (state === "failed
+    } catch (e) {
+        return res.status(500).json({ error: e.message });
+    }
+}
