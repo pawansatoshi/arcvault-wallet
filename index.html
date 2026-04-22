@@ -344,244 +344,168 @@
 
         window.openBridgeModal = (e, symbol) => { e.stopPropagation(); document.getElementById('bridge-asset').value = symbol || 'USDC'; document.getElementById('bridge-target-address').value = document.getElementById('wallet-address').innerText; document.getElementById('bridge-modal').classList.remove('hidden'); };
 
-        window.executeBridge = async () => {
-            try {
-                const uid = window.overrideUid || auth.currentUser?.uid;
-                if (!uid) return;
+        
+async function executeBridge() {
+  try {
+    console.log("=== BRIDGE START ===");
 
-                const snap = await getDoc(doc(db, "users", uid));
-                const rawWId = snap.data()?.walletId;
-                const wId = rawWId ? String(rawWId).replace(/[^a-zA-Z0-9-]/g, '') : "";
+    const destAddress = document.getElementById("bridge-target-address").value;
+    const amountInput = document.getElementById("bridge-amount").value;
 
-                const destAddress = document.getElementById('bridge-target-address').value;
-                const amount = document.getElementById('bridge-amount').value;
+    if (!destAddress || destAddress.length !== 42 || !destAddress.startsWith("0x")) {
+      throw new Error("Invalid destination address");
+    }
 
-                console.log("DEST:", destAddress);
-                console.log("AMOUNT:", amount);
+    if (!amountInput || Number(amountInput) <= 0) {
+      throw new Error("Invalid amount");
+    }
 
-                if (!amount || isNaN(amount) || amount <= 0) {
-                    return alert("Enter valid amount > 0");
-                }
+    console.log("DEST:", destAddress);
+    console.log("AMOUNT:", amountInput);
 
-                if (!destAddress || typeof destAddress !== 'string' || !destAddress.startsWith("0x") || destAddress.length !== 42) {
-                    return alert("Enter a valid 42-character 0x destination address");
-                }
+    const amount = Math.floor(Number(amountInput) * 1e6).toString(); // 6 decimals
 
-                function toBytes32(addr) {
-                    if (!addr || typeof addr !== 'string') throw new Error("Address undefined");
-                    return "0x" + addr.toLowerCase().replace(/^0x/, "").padStart(64, "0");
-                }
+    function toBytes32(addr) {
+      if (!addr) throw new Error("Address undefined");
+      return "0x" + addr.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+    }
 
-                const destBytes32 = toBytes32(destAddress);
+    const destBytes32 = toBytes32(destAddress);
 
-                document.getElementById('bridge-modal').classList.add('hidden');
+    //-----------------------------------
+    // STEP 1 — APPROVE
+    //-----------------------------------
+    console.log("Approving...");
 
-                window.Term.show("Arc → Arbitrum Native Bridge");
-                window.Term.setSteps([
-                    "Approve USDC",
-                    "Burn via CCTP",
-                    "Extract & Attest",
-                    "Mint on Arbitrum"
-                ]);
+    const approveRes = await fetch("/api/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount })
+    });
 
-                // ======================
-                // STEP 1 — APPROVE
-                // ======================
-                window.Term.updateStep(0, 4, "Approving...", "active");
+    const approveData = await approveRes.json();
 
-                const approveRes = await fetch('/api/approve', {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ walletId: wId, amount })
-                });
+    if (!approveData.success) {
+      throw new Error("Approve failed");
+    }
 
-                if (!approveRes.ok) {
-                    const txt = await approveRes.text();
-                    try { JSON.parse(txt); } catch(e) { throw new Error("Invalid JSON response from Approve API"); }
-                }
+    console.log("Approve done");
 
-                const approveData = await approveRes.json();
+    //-----------------------------------
+    // STEP 2 — BURN
+    //-----------------------------------
+    console.log("Burning...");
 
-                if (!approveData.success) {
-                    throw new Error("Approve failed: " + (approveData.error || "Unknown error"));
-                }
+    const burnRes = await fetch("/api/burn", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount,
+        destinationDomain: 3,
+        mintRecipient: destBytes32
+      })
+    });
 
-                window.Term.updateStep(0, 4, "Approved ✓", "completed");
+    const burnData = await burnRes.json();
 
-                await new Promise(r => setTimeout(r, 10000));
+    // ❌ DO NOT CHECK txHash HERE
+    if (!burnData.operationId) {
+      throw new Error("Burn operationId missing");
+    }
 
-                // ======================
-                // STEP 2 — BURN
-                // ======================
-                window.Term.updateStep(1, 4, "Burning...", "active");
+    console.log("Operation ID:", burnData.operationId);
 
-                const burnRes = await fetch('/api/burn', {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({
-                        walletId: wId,
-                        destinationAddress: destBytes32,
-                        amount
-                    })
-                });
+    //-----------------------------------
+    // STEP 3 — POLL FOR TX HASH
+    //-----------------------------------
+    let txHash = null;
 
-                if (!burnRes.ok) {
-                    const txt = await burnRes.text();
-                    try { JSON.parse(txt); } catch(e) { throw new Error("Invalid JSON response from Burn API"); }
-                }
+    for (let i = 0; i < 25; i++) {
+      console.log("Polling txHash... attempt", i);
 
-                const burnData = await burnRes.json();
+      const res = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationId: burnData.operationId })
+      });
 
-                if (!burnData.success) {
-                    throw new Error("Burn failed: " + (burnData.error || "Unknown error"));
-                }
+      const data = await res.json();
 
-                if (!burnData.operationId) {
-                    throw new Error("Burn operationId missing");
-                }
+      if (data.txHash) {
+        txHash = data.txHash;
+        break;
+      }
 
-                window.Term.updateStep(1, 4, "Burn Operation Sent ✓", "completed");
+      await new Promise(r => setTimeout(r, 3000));
+    }
 
-                // ======================
-                // STEP 3 — EXTRACT TX HASH
-                // ======================
-                window.Term.updateStep(2, 4, "Checking receipt...", "active");
+    if (!txHash) {
+      throw new Error("Failed to get txHash");
+    }
 
-                let txHash = null;
-                let messageBytes = null;
-                let logs = null;
+    console.log("TX HASH:", txHash);
 
-                for (let i = 0; i < 20; i++) {
-                    const res = await fetch('/api/extract', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ operationId: burnData.operationId })
-                    });
+    //-----------------------------------
+    // STEP 4 — ATTESTATION
+    //-----------------------------------
+    console.log("Fetching attestation...");
 
-                    if (!res.ok) {
-                        try { await res.text(); } catch(e) {}
-                        await new Promise(r => setTimeout(r, 4000));
-                        continue;
-                    }
+    let attestation = null;
+    let messageBytes = null;
 
-                    const data = await res.json();
+    for (let i = 0; i < 30; i++) {
+      const attRes = await fetch("/api/attest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ txHash })
+      });
 
-                    if (data.status === "reverted") {
-                        throw new Error("Burn reverted");
-                    }
+      const attData = await attRes.json();
 
-                    if (data.status === "complete" && data.txHash && typeof data.txHash === 'string') {
-                        txHash = data.txHash;
-                        if (data.messageBytes) messageBytes = data.messageBytes;
-                        if (data.logs) logs = data.logs;
-                        break;
-                    }
+      if (attData.attestation) {
+        attestation = attData.attestation;
+        messageBytes = attData.message;
+        break;
+      }
 
-                    await new Promise(r => setTimeout(r, 4000));
-                }
+      await new Promise(r => setTimeout(r, 5000));
+    }
 
-                if (!txHash) {
-                    throw new Error("Failed to get txHash from operation");
-                }
+    if (!attestation) {
+      throw new Error("Attestation timeout");
+    }
 
-                // Try to extract messageBytes from logs if not explicitly provided
-                if (!messageBytes && logs && logs.length > 0) {
-                    const log = logs.find(l =>
-                        l.topics && l.topics[0] === "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036"
-                    ) || logs[0];
+    console.log("Attestation received");
 
-                    if (log && log.data && typeof log.data === 'string') {
-                        let dataHex = log.data.replace(/^0x/, '');
-                        const offsetStr = dataHex.substring(0, 64);
-                        if (offsetStr) {
-                            const offset = parseInt(offsetStr, 16) * 2;
-                            const lengthStr = dataHex.substring(offset, offset + 64);
-                            const length = parseInt(lengthStr, 16) * 2;
-                            if (dataHex.length >= offset + 64 + length) {
-                                messageBytes = "0x" + dataHex.substring(offset + 64, offset + 64 + length);
-                            }
-                        }
-                    }
-                }
+    //-----------------------------------
+    // STEP 5 — MINT
+    //-----------------------------------
+    console.log("Minting...");
 
-                if (!messageBytes) {
-                    throw new Error("Message bytes not found in extract response");
-                }
+    const mintRes = await fetch("/api/mint", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: messageBytes,
+        attestation
+      })
+    });
 
-                window.Term.updateStep(2, 4, "Message Extracted ✓", "completed");
+    const mintData = await mintRes.json();
 
-                // ======================
-                // STEP 4 — ATTESTATION
-                // ======================
-                window.Term.updateStep(3, 4, "Polling Iris...", "active");
+    if (!mintData.success) {
+      throw new Error("Mint failed");
+    }
 
-                const messageHash = ethers.keccak256(messageBytes);
+    console.log("=== BRIDGE SUCCESS ===");
 
-                let attestation = null;
+    alert("Bridge Completed Successfully");
 
-                for (let i = 0; i < 30; i++) {
-                    const irisRes = await fetch(
-                        `https://iris-api-sandbox.circle.com/v1/attestations/${messageHash}`
-                    );
-
-                    if (!irisRes.ok) {
-                        try { await irisRes.text(); } catch(e) {}
-                        await new Promise(r => setTimeout(r, 5000));
-                        continue;
-                    }
-
-                    const irisData = await irisRes.json();
-
-                    if (irisData.status === "complete") {
-                        attestation = irisData.attestation;
-                        break;
-                    }
-
-                    await new Promise(r => setTimeout(r, 5000));
-                }
-
-                if (!attestation) {
-                    throw new Error("Attestation timeout");
-                }
-
-                window.Term.updateStep(3, 4, "Attested ✓", "completed");
-
-                // ======================
-                // STEP 5 — MINT
-                // ======================
-                const mintRes = await fetch('/api/mint', {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({
-                        walletId: wId,
-                        messageBytes,
-                        attestation
-                    })
-                });
-
-                if (!mintRes.ok) {
-                    const txt = await mintRes.text();
-                    try { JSON.parse(txt); } catch(e) { throw new Error("Invalid JSON response from Mint API"); }
-                }
-
-                const mintData = await mintRes.json();
-
-                if (!mintData.success) {
-                    throw new Error("Mint failed: " + (mintData.error || "Unknown error"));
-                }
-
-                window.Term.success(
-                    mintData.operationId,
-                    "#",
-                    "Bridge complete"
-                );
-
-            } catch (e) {
-                console.error("BRIDGE ERROR:", e);
-                alert(e.message || "Bridge failed");
-                if (window.Term) window.Term.error(e.message);
-            }
-        };
+  } catch (err) {
+    console.error("BRIDGE ERROR:", err);
+    alert(err.message || "Bridge failed");
+  }
+}
 
         window.openHistoryModal = async () => { document.getElementById('history-modal').classList.remove('hidden'); };
         window.openReceiveModal = () => { document.getElementById('receive-modal').classList.remove('hidden'); document.getElementById('modal-addr-text').innerText = document.getElementById('wallet-address').innerText; document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${document.getElementById('wallet-address').innerText}&color=00FFA3&bgcolor=000000`; };
