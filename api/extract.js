@@ -9,32 +9,30 @@ export default async function handler(req, res) {
         const { operationId } = req.body;
         if (!operationId) return res.status(400).json({ error: "Missing operationId" });
 
-        // 🔥 THE FIX: Search the transactions list BY operationId using a query parameter
-        const txRes = await fetch(`https://api.circle.com/v1/w3s/transactions?operationId=${operationId}`, {
+        // 🔥 THE FIX: Correct Circle API URL (No /operations/, No /developer/)
+        const txRes = await fetch(`https://api.circle.com/v1/w3s/transactions/${operationId}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` }
         });
-        
+
         if (!txRes.ok) {
+            // Transaction abhi blockchain par register nahi hui hai, safely wait karo
             return res.status(200).json({ pending: true }); 
         }
 
         const data = await txRes.json();
         
-        // Grab the txHash from the first transaction in the returned array
-        if (data?.data?.transactions && data.data.transactions.length > 0) {
-            const tx = data.data.transactions[0];
-            const txHash = tx.txHash || tx.transactionHash;
-            
-            if (txHash) {
-                return res.status(200).json({ success: true, txHash });
-            }
+        // Circle's JSON path: data.data.transaction.txHash OR data.data.txHash
+        const txHash = data?.data?.transaction?.txHash || data?.data?.txHash;
+
+        if (!txHash) {
+            return res.status(200).json({ pending: true });
         }
 
-        // If the blockchain hasn't generated the transaction yet, keep pending safely
-        return res.status(200).json({ pending: true });
+        // TxHash mil gaya! Frontend loop break ho jayega.
+        return res.status(200).json({ success: true, txHash });
 
     } catch (e) {
-        return res.status(200).json({ pending: true, error: e.message });
+        return res.status(200).json({ pending: true, error: "Network glitch, retrying..." });
     }
 }
