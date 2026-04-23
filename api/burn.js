@@ -1,34 +1,17 @@
 import crypto from "crypto";
-import { parseUnits, isAddress } from "ethers";
+import { parseUnits } from "ethers";
 
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
     try {
-        let { walletId, destinationAddress, amount } = req.body;
+        const { walletId, destinationAddress, amount } = req.body;
 
-        // ✅ basic validation
         if (!walletId || !destinationAddress || !amount) {
             return res.status(400).json({ error: "Missing params" });
         }
 
-        // ✅ address validation (IMPORTANT)
-        if (!isAddress(destinationAddress)) {
-            return res.status(400).json({ error: "Invalid destination address" });
-        }
-
-        // ✅ sanitize amount (fix decimal bugs)
-        amount = Number(amount);
-        if (isNaN(amount) || amount <= 0) {
-            return res.status(400).json({ error: "Invalid amount" });
-        }
-
-        // 🔥 prevent underflow / tiny values
-        if (amount < 0.000001) {
-            return res.status(400).json({ error: "Amount too small (min 0.000001 USDC)" });
-        }
-
-        // 🔐 get Circle public key
+        // 🔐 Get Circle public key
         const keyRes = await fetch(
             "https://api.circle.com/v1/w3s/config/entity/publicKey",
             {
@@ -40,10 +23,6 @@ export default async function handler(req, res) {
 
         const keyData = await keyRes.json();
 
-        if (!keyData?.data?.publicKey) {
-            throw new Error("Failed to fetch Circle public key");
-        }
-
         const encryptedData = crypto.publicEncrypt(
             {
                 key: keyData.data.publicKey,
@@ -53,33 +32,39 @@ export default async function handler(req, res) {
             Buffer.from(process.env.CIRCLE_ENTITY_SECRET, "hex")
         );
 
-        // ✅ EXACT USDC conversion (6 decimals ONLY)
+        // ✅ correct USDC amount (6 decimals)
         const rawAmount = parseUnits(amount.toString(), 6).toString();
 
-        // 🔥 CORRECT payload for ARC CCTP
+        // ✅ destination → bytes32 (CCTP requires this)
+        const destBytes32 =
+            "0x" +
+            destinationAddress.toLowerCase().replace("0x", "").padStart(64, "0");
+
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
             walletId,
 
+            // 🔥 IMPORTANT: correct CCTP TokenMessenger contract (Arc testnet)
             contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
 
-            // ✅ correct ABI (ARC version)
+            // 🔥 CORRECT ABI (7 params version)
             abiFunctionSignature:
-                "depositForBurn(uint256,uint32,address,address)",
+                "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
 
             abiParameters: [
                 rawAmount,
-                3, // Arbitrum Sepolia domain
-                destinationAddress,
-                "0x3600000000000000000000000000000000000000"
+                3, // Arbitrum domain
+                destBytes32,
+                "0x3600000000000000000000000000000000000000", // USDC
+                "0x0000000000000000000000000000000000000000000000000000000000000000",
+                0,
+                2000
             ],
 
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
         };
-
-        console.log("🚀 Sending payload:", payload);
 
         const response = await fetch(
             "https://api.circle.com/v1/w3s/developer/transactions/contractExecution",
@@ -95,10 +80,10 @@ export default async function handler(req, res) {
 
         const result = await response.json();
 
-        console.log("📦 Circle response:", result);
+        console.log("🔥 BURN RESPONSE:", result);
 
         if (!response.ok) {
-            throw new Error(JSON.stringify(result));
+            throw new Error(result?.message || "Burn failed");
         }
 
         return res.status(200).json({
