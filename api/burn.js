@@ -29,27 +29,24 @@ export default async function handler(req, res) {
             Buffer.from(process.env.CIRCLE_ENTITY_SECRET, "hex")
         );
 
-        // Native USDC uses 6 decimals
         const rawAmount = parseUnits(amount.toString(), 6).toString();
-        
-        // CCTP requires a exactly 32-byte padded address for mintRecipient
         const destBytes32 = "0x" + destinationAddress.replace("0x", "").padStart(64, "0");
 
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
             walletId,
-            
-            // CORRECT Arc Testnet TokenMessengerV2 Address
-            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA", 
-            
-            // 🔥 THE FIX: Classic 4-Parameter CCTP ABI (Guarantees MessageSent event)
-            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address)",
+            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+            // 🔥 THE FIX: Back to the correct 7-parameter Arc Custom ABI
+            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
             abiParameters: [
                 rawAmount,
-                3, // Destination Domain: 3 = Arbitrum Sepolia
+                3,
                 destBytes32,
-                "0x3600000000000000000000000000000000000000" // Native USDC on Arc
+                "0x3600000000000000000000000000000000000000",
+                "0x0000000000000000000000000000000000000000000000000000000000000000",
+                0,
+                2000
             ],
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
