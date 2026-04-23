@@ -3,7 +3,10 @@ import crypto from 'crypto';
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
+    
     const { walletId, messageBytes, attestation } = req.body;
     
     try {
@@ -29,5 +32,7 @@ export default async function handler(req, res) {
         
         if (!response.ok) throw new Error(`MINT_ERROR: ${JSON.stringify(result)}`);
         return res.status(200).json({ success: true, operationId: result.data.id });
-    } catch (e) { return res.status(500).json({ success: false, error: e.message }); }
+    } catch (e) { 
+        return res.status(500).json({ success: false, error: e.message }); 
+    }
 }
