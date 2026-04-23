@@ -538,7 +538,7 @@
                     
                     for (let i = 0; i < 120; i++) {
                         try {
-                            const irisRes = await fetch(`https://iris-sandbox.circle.com/v1/attestations/${messageHash}`);
+                            const irisRes = await fetch(`https://iris-api-sandbox.circle.com/v1/attestations/${messageHash}`);
                             if (irisRes.status === 404) {
                                 console.log("⏳ attestation not ready yet...");
                             } else if (irisRes.ok) {
