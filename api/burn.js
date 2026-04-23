@@ -15,15 +15,6 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: "Missing params" });
         }
 
-        const numericAmount = parseFloat(amount);
-        if (isNaN(numericAmount) || numericAmount <= 0) {
-            return res.status(400).json({ error: "Invalid amount" });
-        }
-
-        if (numericAmount < 0.1) {
-            return res.status(400).json({ error: "Minimum 0.1 USDC required" });
-        }
-
         const keyRes = await fetch("https://api.circle.com/v1/w3s/config/entity/publicKey", {
             headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}` }
         });
@@ -38,33 +29,31 @@ export default async function handler(req, res) {
             Buffer.from(process.env.CIRCLE_ENTITY_SECRET, "hex")
         );
 
+        // Native USDC uses 6 decimals
         const rawAmount = parseUnits(amount.toString(), 6).toString();
-
-        console.log("RAW INPUT:", amount);
-        console.log("PARSED:", rawAmount);
-
+        
+        // CCTP requires a exactly 32-byte padded address for mintRecipient
         const destBytes32 = "0x" + destinationAddress.replace("0x", "").padStart(64, "0");
 
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
             walletId,
-            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
-            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
+            
+            // CORRECT Arc Testnet TokenMessengerV2 Address
+            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA", 
+            
+            // 🔥 THE FIX: Classic 4-Parameter CCTP ABI (Guarantees MessageSent event)
+            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address)",
             abiParameters: [
                 rawAmount,
-                3,
+                3, // Destination Domain: 3 = Arbitrum Sepolia
                 destBytes32,
-                "0x3600000000000000000000000000000000000000",
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
-                0,
-                2000
+                "0x3600000000000000000000000000000000000000" // Native USDC on Arc
             ],
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
         };
-
-        console.log("ABI:", payload.abiFunctionSignature);
 
         const response = await fetch("https://api.circle.com/v1/w3s/developer/transactions/contractExecution", {
             method: "POST",
@@ -87,7 +76,6 @@ export default async function handler(req, res) {
         });
 
     } catch (e) {
-        console.error("BURN ERROR:", e);
         return res.status(500).json({ error: e.message });
     }
 }
