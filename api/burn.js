@@ -30,23 +30,24 @@ export default async function handler(req, res) {
         );
 
         const rawAmount = parseUnits(amount.toString(), 6).toString();
+        // Pads destination address to 32 bytes as required by CCTP
         const destBytes32 = "0x" + destinationAddress.replace("0x", "").padStart(64, "0");
 
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
             walletId,
-            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
-            // 🔥 THE FIX: Back to the correct 7-parameter Arc Custom ABI
-            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
+            
+            // CORRECT Arc TokenMessengerV2 Address
+            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA", 
+            
+            // 🔥 THE FIX: Standard 4-Parameter Native CCTP Signature
+            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address)",
             abiParameters: [
                 rawAmount,
-                3,
+                3, // Destination Domain (Arbitrum Sepolia)
                 destBytes32,
-                "0x3600000000000000000000000000000000000000",
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
-                0,
-                2000
+                "0x3600000000000000000000000000000000000000" // Native USDC
             ],
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
