@@ -7,8 +7,22 @@ export default async function handler(req, res) {
     try {
         const { walletId, destinationAddress, amount } = req.body;
 
+        // ✅ Basic validation
         if (!walletId || !destinationAddress || !amount) {
             return res.status(400).json({ error: "Missing params" });
+        }
+
+        const numericAmount = parseFloat(amount);
+
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+            return res.status(400).json({ error: "Invalid amount" });
+        }
+
+        // 🚫 Prevent tiny / unstable transfers
+        if (numericAmount < 0.1) {
+            return res.status(400).json({
+                error: "Minimum 0.1 USDC required"
+            });
         }
 
         // 🔐 Get Circle public key
@@ -32,39 +46,36 @@ export default async function handler(req, res) {
             Buffer.from(process.env.CIRCLE_ENTITY_SECRET, "hex")
         );
 
-        // ✅ correct USDC amount (6 decimals)
+        // ✅ Correct amount (ONLY here conversion happens)
         const rawAmount = parseUnits(amount.toString(), 6).toString();
 
-        // ✅ destination → bytes32 (CCTP requires this)
-        const destBytes32 =
-            "0x" +
-            destinationAddress.toLowerCase().replace("0x", "").padStart(64, "0");
+        console.log("🔥 AMOUNT INPUT:", amount);
+        console.log("🔥 RAW AMOUNT:", rawAmount);
 
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
             walletId,
 
-            // 🔥 IMPORTANT: correct CCTP TokenMessenger contract (Arc testnet)
+            // ✅ TokenMessenger (Arc Testnet)
             contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
 
-            // 🔥 CORRECT ABI (7 params version)
+            // ✅ FIXED ABI (NO bytes32)
             abiFunctionSignature:
-                "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
+                "depositForBurn(uint256,uint32,address,address)",
 
             abiParameters: [
                 rawAmount,
-                3, // Arbitrum domain
-                destBytes32,
-                "0x3600000000000000000000000000000000000000", // USDC
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
-                0,
-                2000
+                3, // Arbitrum Sepolia domain
+                destinationAddress,
+                "0x3600000000000000000000000000000000000000"
             ],
 
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
         };
+
+        console.log("🔥 ABI USED:", payload.abiFunctionSignature);
 
         const response = await fetch(
             "https://api.circle.com/v1/w3s/developer/transactions/contractExecution",
