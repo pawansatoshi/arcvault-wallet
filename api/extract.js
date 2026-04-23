@@ -9,27 +9,38 @@ export default async function handler(req, res) {
         const { operationId } = req.body;
         if (!operationId) return res.status(400).json({ error: "Missing operationId" });
 
-        // 1. Check operations endpoint directly to see the true state
-        let opRes = await fetch(`https://api.circle.com/v1/w3s/operations/${operationId}`, {
+        // 1. Check if Circle rejected the operation
+        const opRes = await fetch(`https://api.circle.com/v1/w3s/operations/${operationId}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` }
         });
-        
-        let opData = await opRes.json();
-        
-        // 🔥 If Circle rejected it, tell the frontend to STOP polling
+        const opData = await opRes.json();
+
         if (opData?.data?.state === 'FAILED') {
-            return res.status(200).json({ pending: false, error: "Transaction FAILED on Circle W3S" });
+            return res.status(200).json({ pending: false, error: "Circle W3S rejected the transaction. Please clear localStorage and retry." });
         }
 
-        // 2. Safely extract txHash if it's COMPLETED
-        const txHash = opData?.data?.transactionHash || opData?.data?.txHash;
+        // 2. Fetch the transaction list to get the actual txHash
+        const txRes = await fetch(`https://api.circle.com/v1/w3s/transactions?operationId=${operationId}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` }
+        });
 
-        if (!txHash) {
-            return res.status(200).json({ pending: true }); 
+        if (txRes.ok) {
+            const txData = await txRes.json();
+            // 🔥 THE FIX: Correctly pathing into the transactions array
+            if (txData?.data?.transactions && txData.data.transactions.length > 0) {
+                const tx = txData.data.transactions[0];
+                const txHash = tx.txHash || tx.transactionHash;
+                
+                if (txHash) {
+                    return res.status(200).json({ success: true, txHash });
+                }
+            }
         }
 
-        return res.status(200).json({ success: true, txHash });
+        // Still pending on blockchain...
+        return res.status(200).json({ pending: true });
 
     } catch (e) {
         return res.status(200).json({ pending: true, error: "Network glitch, retrying..." });
