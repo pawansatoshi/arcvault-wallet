@@ -476,7 +476,7 @@
                 // --- STEP 4: MESSAGES API (REPLACES RPC & MANUAL ATTESTATION) ---
                 case "TX_CONFIRMED":
                 case "POLLING_ATTESTATION":
-                    const SOURCE_DOMAIN_ID = 0; // ⚠️ IMPORTANT: Replace '0' with Arc Testnet's actual Source Domain ID
+                    const SOURCE_DOMAIN_ID = 26; // ⚠️ IMPORTANT: Replace '0' with Arc Testnet's actual Source Domain ID
                     
                     try {
                         const msgRes = await fetch(`https://iris-api-sandbox.circle.com/v1/messages/${SOURCE_DOMAIN_ID}/${ctx.txHash}`);
