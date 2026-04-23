@@ -9,40 +9,32 @@ export default async function handler(req, res) {
         const { operationId } = req.body;
         if (!operationId) return res.status(400).json({ error: "Missing operationId" });
 
-        // 1. PRIMARY: Check operations endpoint (This is what we missed last time!)
-        let circleRes = await fetch(`https://api.circle.com/v1/w3s/operations/${operationId}`, {
+        // 🔥 THE FIX: Search the transactions list BY operationId using a query parameter
+        const txRes = await fetch(`https://api.circle.com/v1/w3s/transactions?operationId=${operationId}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` }
         });
-        let data = await circleRes.json();
+        
+        if (!txRes.ok) {
+            return res.status(200).json({ pending: true }); 
+        }
 
-        // 2. FALLBACK: Check transactions endpoint
-        if (!circleRes.ok || !data?.data) {
-            const txRes = await fetch(`https://api.circle.com/v1/w3s/transactions/${operationId}`, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` }
-            });
-            if (txRes.ok) {
-                data = await txRes.json();
+        const data = await txRes.json();
+        
+        // Grab the txHash from the first transaction in the returned array
+        if (data?.data?.transactions && data.data.transactions.length > 0) {
+            const tx = data.data.transactions[0];
+            const txHash = tx.txHash || tx.transactionHash;
+            
+            if (txHash) {
+                return res.status(200).json({ success: true, txHash });
             }
         }
 
-        // 3. EXTRACT TX HASH safely from anywhere
-        const txHash = 
-            data?.data?.transactionHash ||
-            data?.data?.txHash ||
-            data?.data?.blockchainTransactionHash ||
-            data?.data?.transaction?.txHash ||
-            data?.data?.result?.txHash ||
-            data?.data?.result?.transactionHash;
-
-        if (!txHash) {
-            return res.status(200).json({ pending: true }); // Let frontend keep polling
-        }
-
-        return res.status(200).json({ success: true, txHash });
+        // If the blockchain hasn't generated the transaction yet, keep pending safely
+        return res.status(200).json({ pending: true });
 
     } catch (e) {
-        return res.status(200).json({ pending: true, error: "Network glitch, retrying..." });
+        return res.status(200).json({ pending: true, error: e.message });
     }
 }
