@@ -30,24 +30,25 @@ export default async function handler(req, res) {
         );
 
         const rawAmount = parseUnits(amount.toString(), 6).toString();
-        // Pads destination address to 32 bytes as required by CCTP
         const destBytes32 = "0x" + destinationAddress.replace("0x", "").padStart(64, "0");
+        const emptyBytes32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
             walletId,
+            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA", // Arc TokenMessengerV2
             
-            // CORRECT Arc TokenMessengerV2 Address
-            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA", 
-            
-            // 🔥 THE FIX: Standard 4-Parameter Native CCTP Signature
-            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address)",
+            // The Required 7-Parameter ABI
+            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
             abiParameters: [
                 rawAmount,
                 3, // Destination Domain (Arbitrum Sepolia)
                 destBytes32,
-                "0x3600000000000000000000000000000000000000" // Native USDC
+                "0x3600000000000000000000000000000000000000", // Native USDC
+                emptyBytes32, // destinationCaller
+                0, // feeAmount
+                0  // 🔥 THE FIX: feeDomain changed to 0 to prevent internal CCTP drop
             ],
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
