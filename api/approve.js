@@ -1,15 +1,19 @@
 import crypto from 'crypto';
+import { parseUnits } from "ethers";
 
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req, res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+
     const { walletId, amount } = req.body;
 
     try {
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', {
             headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}` }
         });
-
         const keyData = await keyRes.json();
 
         const encryptedData = crypto.publicEncrypt(
@@ -21,7 +25,7 @@ export default async function handler(req, res) {
             Buffer.from(process.env.CIRCLE_ENTITY_SECRET, 'hex')
         );
 
-        const rawAmount = Math.floor(parseFloat(amount) * 1e6).toString();
+        const rawAmount = parseUnits(amount.toString(), 6).toString();
 
         const payload = {
             idempotencyKey: crypto.randomUUID(),
@@ -37,17 +41,14 @@ export default async function handler(req, res) {
             blockchain: "ARC-TESTNET"
         };
 
-        const response = await fetch(
-            'https://api.circle.com/v1/w3s/developer/transactions/contractExecution',
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            }
-        );
+        const response = await fetch('https://api.circle.com/v1/w3s/developer/transactions/contractExecution', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
 
         const result = await response.json();
 
