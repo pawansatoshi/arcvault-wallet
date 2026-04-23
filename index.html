@@ -1,0 +1,159 @@
+<!-- ONLY EXECUTEBRIDGE FUNCTION REPLACED — बाकी same रखो -->
+
+<script>
+window.executeBridge = async () => {
+    try {
+        const uid = window.overrideUid || auth.currentUser?.uid;
+        if (!uid) return;
+
+        const snap = await getDoc(doc(db, "users", uid));
+        const wId = snap.data()?.walletId?.replace(/[^a-zA-Z0-9-]/g, '');
+
+        const destAddress = document.getElementById('bridge-target-address').value.trim();
+        const amount = document.getElementById('bridge-amount').value.trim();
+
+        if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+            return alert("Enter valid amount");
+        }
+
+        if (!destAddress || !destAddress.startsWith("0x") || destAddress.length !== 42) {
+            return alert("Invalid address");
+        }
+
+        document.getElementById('bridge-modal').classList.add('hidden');
+
+        window.Term.show("Arc → Arbitrum Native Bridge");
+        window.Term.setSteps([
+            "Approve USDC",
+            "Burn via CCTP",
+            "Extract & Attest",
+            "Mint on Arbitrum"
+        ]);
+
+        // ======================
+        // STEP 1 — APPROVE
+        // ======================
+        window.Term.updateStep(0, 4, "Approving...", "active");
+
+        const approveRes = await fetch('/api/approve', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                walletId: wId,
+                amount: amount   // ✅ RAW भेजो
+            })
+        });
+
+        const approveData = await approveRes.json();
+
+        if (!approveData.success) {
+            throw new Error("Approve failed");
+        }
+
+        window.Term.updateStep(0, 4, "Approved ✓", "completed");
+
+        await new Promise(r => setTimeout(r, 8000));
+
+        // ======================
+        // STEP 2 — BURN
+        // ======================
+        window.Term.updateStep(1, 4, "Burning...", "active");
+
+        const burnRes = await fetch('/api/burn', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                walletId: wId,
+                destinationAddress: destAddress, // ✅ normal address
+                amount: amount                   // ✅ RAW amount
+            })
+        });
+
+        const burnData = await burnRes.json();
+
+        if (!burnData.success || !burnData.operationId) {
+            throw new Error("Burn failed");
+        }
+
+        window.Term.updateStep(1, 4, "Burn Sent ✓", "completed");
+
+        // ======================
+        // STEP 3 — EXTRACT
+        // ======================
+        window.Term.updateStep(2, 4, "Waiting for tx...", "active");
+
+        let txHash = null;
+
+        for (let i = 0; i < 90; i++) {
+            const res = await fetch('/api/extract', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ operationId: burnData.operationId })
+            });
+
+            const data = await res.json();
+
+            if (data.success && data.txHash) {
+                txHash = data.txHash;
+                break;
+            }
+
+            await new Promise(r => setTimeout(r, 3000));
+        }
+
+        if (!txHash) {
+            console.warn("txHash delayed");
+            return;
+        }
+
+        window.Term.updateStep(2, 4, "Tx Found ✓", "completed");
+
+        // ======================
+        // STEP 4 — ATTEST
+        // ======================
+        window.Term.updateStep(3, 4, "Attesting...", "active");
+
+        const attestRes = await fetch('/api/attest', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ txHash })
+        });
+
+        const attestData = await attestRes.json();
+
+        if (!attestData.success) {
+            throw new Error("Attestation failed");
+        }
+
+        // ======================
+        // STEP 5 — MINT
+        // ======================
+        const mintRes = await fetch('/api/mint', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                walletId: wId,
+                messageBytes: attestData.messageBytes,
+                attestation: attestData.attestation
+            })
+        });
+
+        const mintData = await mintRes.json();
+
+        if (!mintData.success) {
+            throw new Error("Mint failed");
+        }
+
+        window.Term.success(
+            mintData.operationId,
+            "https://sepolia.arbiscan.io/tx/" + mintData.operationId,
+            "Bridge complete"
+        );
+
+    } catch (e) {
+        console.error(e);
+        alert(e.message);
+        if (window.Term) window.Term.error(e.message);
+    }
+};
+</script>
