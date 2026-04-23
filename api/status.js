@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const API_KEY = process.env.CIRCLE_API_KEY;
-    const { txId } = req.body; // The Circle Operation ID
+    const { txId } = req.body;
 
     if (!txId) return res.status(400).json({ error: "Missing txId parameter" });
 
