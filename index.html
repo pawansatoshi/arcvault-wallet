@@ -279,7 +279,9 @@
                     
                     window.Term.updateStep(1, 3, "Sent ✓", "completed");
                     window.Term.updateStep(2, 3, "Relayed ✓", "completed");
-                    window.Term.success("Verified by Gateway", `https://console.circle.com/wallets/dev/transactions/${sendData.operationId}`);
+                    // यह यूज़र को उनके ArcScan एड्रेस पर ले जाएगा जहाँ वो अपनी लेटेस्ट Txn देख सकते हैं
+                    const myWalletAddress = document.getElementById('wallet-address').innerText;
+                    window.Term.success("View on ArcScan", `https://testnet.arcscan.app/address/${myWalletAddress}`);
                     return { ...ctx, step: "DONE" };
                     
                 default:
