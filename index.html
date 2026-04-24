@@ -245,10 +245,16 @@
                     });
                     const appData = await appRes.json();
                     if (!appData.success) throw new Error("Approve Failed");
+                    
+                    window.Term.updateStep(0, 3, "Confirming on Blockchain (15s)...", "active");
+                    
+                    // 🔥 THE FIX: Wait 15 seconds for the blockchain to mine the approve transaction
+                    await delay(15000); 
+                    
                     window.Term.updateStep(0, 3, "Approved ✓", "completed");
                     return { ...ctx, step: "SENDING_TO_GATEWAY" };
 
-                // STEP 2: SEND TO GATEWAY (We reuse the /api/burn route but updated inside)
+                // STEP 2: SEND TO GATEWAY
                 case "APPROVED":
                 case "SENDING_TO_GATEWAY":
                     const sendRes = await fetch('/api/burn', {
