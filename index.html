@@ -474,7 +474,26 @@
 
         // MASTER KEY
         window.downloadMasterKey = () => { const uid = window.overrideUid || auth.currentUser?.uid; if(!uid) return; const keyString = btoa("ARC-VAULT-" + uid + "-" + new Date().getTime()); localStorage.setItem('arcvault_recovery_hash', keyString); localStorage.setItem('arcvault_key_secured', 'true'); document.getElementById('download-key-btn').classList.add('hidden'); let content = "===========================================\n     ARCVAULT MASTER RECOVERY KEY\n===========================================\n\nKeep this file secure. If you lose access to all your connected social accounts, this cryptographic key mathematically maps back to your original vault identity.\n\n"; content += `Key: ${keyString}\nGenerated: ${new Date().toLocaleString()}\n`; const blob = new Blob([content], { type: "text/plain" }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ArcVault_MasterKey_${new Date().getTime()}.txt`; a.click(); URL.revokeObjectURL(url); playCustomVoice("Master Key downloaded securely."); };
-        window.processRecovery = () => { const input = document.getElementById('recovery-key-input').value.trim(); const stored = localStorage.getItem('arcvault_recovery_hash'); if(input && stored && input === stored) { const decoded = atob(input).split('-'); window.overrideUid = decoded[2]; playCustomVoice("Cryptographic recovery successful."); closeModal('recovery-modal'); showWallet({uid: window.overrideUid}); } else { showError("Recovery Failed", "Invalid or corrupted Master Key.", "ERR-KEY"); } };
+        window.processRecovery = () => {
+            const input = document.getElementById('recovery-key-input').value.trim();
+            try {
+                // LocalStorage को इग्नोर करें, सीधे Key को डिकोड करें
+                const decoded = atob(input);
+                const parts = decoded.split('-');
+                
+                // चेक करें कि क्या डिकोड होने के बाद वो ARC-VAULT-... से शुरू हो रहा है
+                if (parts[0] === 'ARC' && parts[1] === 'VAULT' && parts[2]) {
+                    window.overrideUid = parts[2]; // असली UID निकालें
+                    playCustomVoice("Cryptographic recovery successful.");
+                    closeModal('recovery-modal');
+                    showWallet({uid: window.overrideUid});
+                } else {
+                    throw new Error("Invalid format");
+                }
+            } catch(e) {
+                showError("Recovery Failed", "Invalid or corrupted Master Key.", "ERR-KEY");
+            }
+        };
 
         function updateClocks() { const now = new Date(); document.getElementById('time-utc').innerText = "UTC: " + now.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' }); document.getElementById('time-lon').innerText = "LON: " + now.toLocaleTimeString('en-US', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' }); document.getElementById('time-nyc').innerText = "USA: " + now.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' }); document.getElementById('time-ist').innerText = "IST: " + now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' }); } setInterval(updateClocks, 1000);
 
