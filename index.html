@@ -266,7 +266,7 @@
                     
                     window.Term.updateStep(1, 3, "Sent ✓", "completed");
                     window.Term.updateStep(2, 3, "Relayed ✓", "completed");
-                    window.Term.success(sendData.operationId, `https://testnet.arcscan.app/tx/${sendData.operationId}`);
+                    window.Term.success("Verified by Gateway", `https://console.circle.com/wallets/dev/transactions/${sendData.operationId}`);
                     return { ...ctx, step: "DONE" };
                     
                 default:
