@@ -139,7 +139,9 @@
             </div>
             <div id="asset-container" class="space-y-2"></div>
         </div>
-
+<div id="asset-container" class="space-y-2"></div>
+    </div>
+    
         <div class="glass rounded-3xl p-5 text-center mt-4 border border-white/10 mb-10 fade-in">
             <h4 class="text-[9px] font-bold uppercase text-blue-400 mb-3 tracking-widest text-left border-b border-white/10 pb-1">Connect Developer</h4>
             <div class="flex flex-wrap justify-start items-center gap-4 mb-5">
@@ -175,6 +177,20 @@
         </div>
     </div>
 
+    <div id="browser-modal" class="hidden fixed inset-0 z-[120] flex flex-col bg-[#0a0a0a] fade-in">
+        <div class="flex items-center justify-between p-3 border-b border-white/10 pt-10">
+            <button onclick="closeModal('browser-modal')" class="text-red-400 font-bold px-3 text-xs uppercase tracking-widest bg-red-500/10 py-2 rounded-xl">Close</button>
+            <div class="flex-1 mx-2 flex items-center bg-white/10 rounded-xl px-3 py-2 border border-white/5">
+                <span class="text-gray-400 text-xs mr-2">🔒</span>
+                <input type="text" id="browser-url" placeholder="Enter URL (e.g. google.com)" class="bg-transparent border-none w-full text-[10px] font-bold outline-none text-white" onkeypress="handleBrowserEnter(event)">
+            </div>
+            <button onclick="loadBrowserUrl()" class="text-emerald-400 font-bold px-4 text-xs uppercase tracking-widest bg-emerald-500/10 py-2 rounded-xl">Go</button>
+        </div>
+        <div class="flex-1 w-full h-full bg-white relative">
+            <iframe id="dapp-iframe" class="w-full h-full border-none"></iframe>
+        </div>
+                </div>
+    
     <div id="pin-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-black/95 p-4 fade-in">
         <div class="glass rounded-[38px] p-8 max-w-xs w-full text-center border border-emerald-500/30 shadow-2xl">
             <h3 id="pin-title" class="text-xl font-black mb-2 uppercase tracking-widest text-emerald-400">Vault Security</h3>
@@ -717,6 +733,26 @@
         window.saveContact = async () => { const name = document.getElementById('wl-name').value; const addr = document.getElementById('wl-address').value; if(!name || !addr) return; const uid = window.overrideUid || auth.currentUser.uid; await updateDoc(doc(db, "users", uid), { contacts: arrayUnion({ name, address: addr }) }).catch(async () => { await setDoc(doc(db, "users", uid), { contacts: [{ name, address: addr }] }, { merge: true }); }); document.getElementById('wl-name').value = ''; document.getElementById('wl-address').value = ''; openWhitelist(); };
         window.openReceiveModal = () => { const addr = document.getElementById('wallet-address').innerText; document.getElementById('modal-addr-text').innerText = addr; document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${addr}&color=00FFA3&bgcolor=000000`; document.getElementById('receive-modal').classList.remove('hidden'); };
 
+// --- DAPP BROWSER ENGINE ---
+        window.openBrowserModal = () => { 
+            document.getElementById('browser-modal').classList.remove('hidden'); 
+            document.getElementById('browser-url').focus();
+        };
+
+        window.handleBrowserEnter = (e) => { 
+            if (e.key === 'Enter') loadBrowserUrl(); 
+        };
+
+        window.loadBrowserUrl = () => {
+            let url = document.getElementById('browser-url').value.trim();
+            if (!url) return;
+            if (!url.startsWith('http')) url = 'https://' + url;
+            
+            const iframe = document.getElementById('dapp-iframe');
+            iframe.src = url; 
+            playCustomVoice("Loading internal browser.");
+        };
+        
         // --- DUAL FAUCET ENGINE ---
         setInterval(() => {
             const lastClaim = localStorage.getItem('lastClaimTime_arc');
