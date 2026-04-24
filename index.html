@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
@@ -70,7 +71,7 @@
                 <button onclick="logoutApp()" class="text-[9px] font-bold text-red-400 border border-red-500/20 px-2 py-1 rounded-lg hover:bg-red-500/20 transition uppercase tracking-wider">Logout</button>
             </div>
         </div>
-
+<div class="glass rounded-[32px] p-6 text-center relative shadow-2xl border-t border-white/10">
         <div class="glass rounded-[32px] p-6 text-center relative shadow-2xl border-t border-white/10">
             <div class="absolute top-4 right-4 flex space-x-2">
                 <button onclick="openSettingsModal()" class="text-[10px] bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold uppercase tracking-widest transition flex items-center gap-1 border border-white/5">⚙️ Manage Networks</button>
@@ -174,7 +175,36 @@
             </form>
         </div>
     </div>
+<div id="browser-modal" class="hidden fixed inset-0 z-[120] flex flex-col bg-[#0a0a0a] fade-in">
+        <div class="flex items-center justify-between p-3 border-b border-white/10 pt-10">
+            <button onclick="closeModal('browser-modal'); stopQRScanner();" class="text-red-400 font-bold px-3 text-xs uppercase tracking-widest bg-red-500/10 py-2 rounded-xl">Close</button>
+            <div class="flex-1 mx-2 flex items-center bg-white/10 rounded-xl px-3 py-2 border border-white/5">
+                <span class="text-gray-400 text-xs mr-2">🔒</span>
+                <input type="text" id="browser-url" placeholder="Search, URL or wc:..." class="bg-transparent border-none w-full text-[10px] font-bold outline-none text-white" onkeypress="handleBrowserEnter(event)">
+                <button onclick="startQRScanner()" class="ml-2 text-xl hover:scale-110 transition">📷</button>
+            </div>
+            <button onclick="loadBrowserUrl()" class="text-emerald-400 font-bold px-4 text-xs uppercase tracking-widest bg-emerald-500/10 py-2 rounded-xl">Go</button>
+        </div>
+        
+        <div id="qr-reader-container" class="hidden absolute inset-x-0 top-[80px] bottom-0 z-[130] bg-black p-4 flex flex-col items-center">
+            <div id="qr-reader" class="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-purple-500"></div>
+            <button onclick="stopQRScanner()" class="mt-6 bg-red-500/20 text-red-400 px-6 py-3 rounded-2xl font-black uppercase text-xs">Cancel Scan</button>
+        </div>
 
+        <div id="wc-action-bar" class="hidden bg-blue-900/90 border-b border-blue-500/50 p-3 flex justify-between items-center px-4">
+            <span class="text-[10px] text-white font-bold uppercase tracking-widest italic">🔗 WalletConnect</span>
+            <button onclick="simulateWalletConnect()" class="bg-blue-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-[0_0_15px_rgba(59,130,246,0.6)]">Approve</button>
+        </div>
+
+        <div class="flex-1 w-full h-full bg-white relative">
+            <iframe id="dapp-iframe" class="w-full h-full border-none"></iframe>
+            <div id="browser-placeholder" class="absolute inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center p-8 text-center">
+                <div class="text-5xl mb-4">🌍</div>
+                <h3 class="text-purple-400 font-black uppercase tracking-widest italic text-sm">DApp Explorer</h3>
+                <p class="text-[9px] text-gray-500 mt-2 font-bold max-w-[200px]">Enter URL or scan WalletConnect QR to get started.</p>
+            </div>
+        </div>
+                    </div>
     <div id="pin-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-black/95 p-4 fade-in">
         <div class="glass rounded-[38px] p-8 max-w-xs w-full text-center border border-emerald-500/30 shadow-2xl">
             <h3 id="pin-title" class="text-xl font-black mb-2 uppercase tracking-widest text-emerald-400">Vault Security</h3>
@@ -785,7 +815,58 @@
                 document.querySelectorAll('.faucet-btn').forEach(b => { b.innerText = "💧 CLAIM"; b.disabled = false; });
             }
         };
+// --- DAPP BROWSER & WALLETCONNECT ENGINE ---
+        let html5QrCode;
+        window.openBrowserModal = () => { 
+            document.getElementById('browser-modal').classList.remove('hidden'); 
+            document.getElementById('browser-url').focus();
+        };
 
+        window.handleBrowserEnter = (e) => { if (e.key === 'Enter') loadBrowserUrl(); };
+        
+        window.loadBrowserUrl = () => {
+            let url = document.getElementById('browser-url').value.trim();
+            if (!url) return;
+            
+            if (url.startsWith('wc:')) {
+                document.getElementById('wc-action-bar').classList.remove('hidden');
+                document.getElementById('dapp-iframe').classList.add('hidden');
+                document.getElementById('browser-placeholder').classList.remove('hidden');
+                playCustomVoice("Wallet Connect URI detected.");
+                return;
+            }
+            
+            document.getElementById('wc-action-bar').classList.add('hidden');
+            if (!url.startsWith('http')) url = 'https://' + url;
+            
+            document.getElementById('browser-placeholder').classList.add('hidden');
+            const iframe = document.getElementById('dapp-iframe');
+            iframe.classList.remove('hidden');
+            iframe.src = url; 
+            playCustomVoice("Loading decentralized application.");
+        };
+
+        window.simulateWalletConnect = () => {
+            document.getElementById('wc-action-bar').classList.add('hidden');
+            document.getElementById('browser-url').value = '';
+            closeModal('browser-modal');
+            playCustomVoice("Wallet Connect session established.");
+            alert("✅ WalletConnect Linked!\n\nArcVault is now communicating with the DApp.");
+        };
+
+        window.startQRScanner = () => {
+            document.getElementById('qr-reader-container').classList.remove('hidden');
+            html5QrCode = new Html5Qrcode("qr-reader");
+            html5QrCode.start( { facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => { document.getElementById('browser-url').value = decodedText; stopQRScanner(); loadBrowserUrl(); },
+                (errorMessage) => {}
+            ).catch(err => { showError("Camera Error", "Enable camera permissions.", "ERR-CAM"); stopQRScanner(); });
+        };
+
+        window.stopQRScanner = () => {
+            document.getElementById('qr-reader-container').classList.add('hidden');
+            if (html5QrCode) { html5QrCode.stop().then(() => html5QrCode.clear()); }
+        };
         // --- SWAP ENGINE ---
         window.openSwapModal = (e, symbol) => { e.stopPropagation(); document.getElementById('swap-from-token').value = symbol; document.getElementById('swap-to-token').value = symbol === 'tUSDC' ? 'tARC' : 'tUSDC'; document.getElementById('swap-modal').classList.remove('hidden'); document.getElementById('swap-form').classList.remove('hidden'); document.getElementById('swap-success').classList.add('hidden'); calculateSwapEstimate(); };
         window.flipSwap = () => { const from = document.getElementById('swap-from-token').value; const to = document.getElementById('swap-to-token').value; document.getElementById('swap-from-token').value = to; document.getElementById('swap-to-token').value = from; calculateSwapEstimate(); };
