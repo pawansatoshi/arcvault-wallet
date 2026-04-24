@@ -758,23 +758,11 @@
         window.editContact = async (addr, name) => { document.getElementById('wl-name').value = name; document.getElementById('wl-address').value = addr; const uid = window.overrideUid || auth.currentUser.uid; const snap = await getDoc(doc(db, "users", uid)); const updatedContacts = snap.data().contacts.filter(c => c.address !== addr); await updateDoc(doc(db, "users", uid), { contacts: updatedContacts }); };
         window.saveContact = async () => { const name = document.getElementById('wl-name').value; const addr = document.getElementById('wl-address').value; if(!name || !addr) return; const uid = window.overrideUid || auth.currentUser.uid; await updateDoc(doc(db, "users", uid), { contacts: arrayUnion({ name, address: addr }) }).catch(async () => { await setDoc(doc(db, "users", uid), { contacts: [{ name, address: addr }] }, { merge: true }); }); document.getElementById('wl-name').value = ''; document.getElementById('wl-address').value = ''; openWhitelist(); };
         window.openReceiveModal = () => { const addr = document.getElementById('wallet-address').innerText; document.getElementById('modal-addr-text').innerText = addr; document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${addr}&color=00FFA3&bgcolor=000000`; document.getElementById('receive-modal').classList.remove('hidden'); };
-// --- DAPP BROWSER & WALLETCONNECT ENGINE ---
-        window.openBrowserModal = () => { 
-            document.getElementById('browser-modal').classList.remove('hidden'); 
-        };
-        window.setBrowserUrl = (url) => { 
-            document.getElementById('browser-url').value = url; 
-            loadBrowserUrl(); 
-        };
-        window.handleBrowserEnter = (e) => { 
-            if (e.key === 'Enter') loadBrowserUrl(); 
-        };
-        
         window.loadBrowserUrl = () => {
             let url = document.getElementById('browser-url').value.trim();
             if (!url) return;
             
-            // Handle WalletConnect URI
+            // 1. Handle WalletConnect URI (Inside the App)
             if (url.startsWith('wc:')) {
                 document.getElementById('wc-action-bar').classList.remove('hidden');
                 document.getElementById('dapp-iframe').classList.add('hidden');
@@ -786,19 +774,11 @@
             document.getElementById('wc-action-bar').classList.add('hidden');
             if (!url.startsWith('http')) url = 'https://' + url;
             
-            document.getElementById('browser-placeholder').classList.add('hidden');
-            const iframe = document.getElementById('dapp-iframe');
-            iframe.classList.remove('hidden');
-            iframe.src = url;
-            playCustomVoice("Loading decentralized application.");
-        };
-
-        window.simulateWalletConnect = () => {
-            document.getElementById('wc-action-bar').classList.add('hidden');
-            document.getElementById('browser-url').value = '';
+            // 2. THE FIX: Open DApps securely in a new native tab to bypass security blocks
+            window.open(url, '_blank');
             closeModal('browser-modal');
-            playCustomVoice("Wallet Connect session established.");
-            alert("✅ WalletConnect Approved!\n\nYour ArcVault is now connected to the DApp via encrypted session.");
+            document.getElementById('browser-url').value = '';
+            playCustomVoice("Opening decentralized application securely.");
         };
         
         // --- DUAL FAUCET ENGINE ---
