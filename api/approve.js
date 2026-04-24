@@ -7,18 +7,9 @@ export default async function handler(req, res) {
 
     const API_KEY = process.env.CIRCLE_API_KEY;
     const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
-    const { walletId, fromSymbol, amount } = req.body;
+    const { walletId, tokenAddress, amount } = req.body;
 
     const DEX_ADDRESS = "0x09980dfDA55Fa5C761887C82FA5014D9dFaA3A9A";
-    const TUSDC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA".toLowerCase();
-    const TARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78".toLowerCase();
-
-    // STRICT LOCKOUT: Reject Native USDC
-    if (fromSymbol === 'USDC') {
-        return res.status(400).json({ error: "Execution Halted", details: "Native USDC is reserved for gas. Swap tUSDC for tARC instead." });
-    }
-
-    const tokenInAddress = fromSymbol === 'tUSDC' ? TUSDC_ADDRESS : TARC_ADDRESS;
     const scaledAmount = BigInt(Math.floor(parseFloat(amount) * 1e18)).toString();
 
     try {
@@ -30,9 +21,9 @@ export default async function handler(req, res) {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString('base64'),
             walletId: walletId,
-            contractAddress: DEX_ADDRESS,
-            abiFunctionSignature: "swap(address,uint256)",
-            abiParameters: [tokenInAddress, scaledAmount],
+            contractAddress: tokenAddress,
+            abiFunctionSignature: "approve(address,uint256)",
+            abiParameters: [DEX_ADDRESS, scaledAmount],
             feeLevel: "MEDIUM"
         };
 
@@ -43,7 +34,7 @@ export default async function handler(req, res) {
         });
 
         const result = await response.json();
-        if (!response.ok) return res.status(response.status).json({ error: result.message || "Execution Failed", details: result });
+        if (!response.ok) return res.status(response.status).json({ error: result.message || "Approval Failed", details: result });
         return res.status(200).json({ success: true, data: result.data });
     } catch (err) {
         return res.status(500).json({ error: "Server Error", details: err.message });

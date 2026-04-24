@@ -4,18 +4,18 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const API_KEY = process.env.CIRCLE_API_KEY;
-    const { txId } = req.body; // The Circle Operation ID
+    const { walletId } = req.body;
 
-    if (!txId) return res.status(400).json({ error: "Missing txId parameter" });
+    if (!walletId) return res.status(400).json({ error: "Missing walletId parameter" });
 
     try {
-        const response = await fetch(`https://api.circle.com/v1/w3s/transactions/${txId}`, {
+        const response = await fetch(`https://api.circle.com/v1/w3s/wallets/${walletId}/balances`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
         });
 
         const result = await response.json();
-        if (!response.ok) return res.status(response.status).json({ error: result.message || "Status Fetch Failed", details: result });
+        if (!response.ok) return res.status(response.status).json({ error: result.message || "Balance Fetch Failed", details: result });
         
         return res.status(200).json({ success: true, data: result.data });
     } catch (err) {
