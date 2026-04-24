@@ -9,9 +9,9 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        const { walletId, destinationAddress, amount } = req.body;
+        const { walletId, amount } = req.body;
 
-        if (!walletId || !destinationAddress || !amount) {
+        if (!walletId || !amount) {
             return res.status(400).json({ error: "Missing params" });
         }
 
@@ -30,23 +30,21 @@ export default async function handler(req, res) {
         );
 
         const rawAmount = parseUnits(amount.toString(), 6).toString();
-        // Gateway might take a standard EVM address (not padded to 32 bytes like raw CCTP)
-        const destAddressEVMFriendly = destinationAddress; 
+        const ARC_USDC_ADDRESS = "0x3600000000000000000000000000000000000000";
 
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
             walletId,
             
-            // 🔥 The Arc GatewayWallet Contract Address
+            // Arc GatewayWallet Contract Address
             contractAddress: "0x0077777d7EBA4688BDeF3E311b846F25870A19B9", 
             
-            // ⚠️ Placeholder ABI: Ensure this matches Arc Gateway Docs
-            abiFunctionSignature: "deposit(uint256,address,uint32)", 
+            // 🔥 THE FIX: Official Arc Gateway Deposit Signature
+            abiFunctionSignature: "deposit(address,uint256)", 
             abiParameters: [
-                rawAmount,
-                destAddressEVMFriendly,
-                3 // Arbitrum Sepolia Domain ID
+                ARC_USDC_ADDRESS, // 1. The Token to deposit
+                rawAmount         // 2. The amount in subunits
             ],
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
@@ -64,7 +62,7 @@ export default async function handler(req, res) {
         const result = await response.json();
 
         if (!response.ok) {
-            throw new Error(result?.message || "Gateway Send failed");
+            throw new Error(result?.message || "Gateway Deposit failed");
         }
 
         return res.status(200).json({
