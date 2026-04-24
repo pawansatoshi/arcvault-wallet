@@ -150,17 +150,30 @@
         }
 
         window.fetchLiveBalances = async () => {
-            const uid = auth.currentUser?.uid; if(!uid) return; const snap = await getDoc(doc(db, "users", uid)); const wId = snap.data()?.walletId; if(!wId) return;
-            const net = document.getElementById('network-selector').value; let blockchainParam = net === 'arb-sepolia' ? 'ARB-SEPOLIA' : 'ARC-TESTNET';
+            const uid = auth.currentUser?.uid; if(!uid) return; 
+            const snap = await getDoc(doc(db, "users", uid)); const wId = snap.data()?.walletId; if(!wId) return;
+            const net = document.getElementById('network-selector').value; 
+            let blockchainParam = net === 'arb-sepolia' ? 'ARB-SEPOLIA' : 'ARC-TESTNET';
             try {
                 const res = await fetch('/api/balance', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, blockchain: blockchainParam }) }); 
                 let data = await res.json();
-                if(data?.data?.tokenBalances) { data.data.tokenBalances.forEach(t => { 
-                    const el = document.getElementById(`bal-${t.token.symbol}`); if(el) el.innerText = parseFloat(t.amount).toFixed(2);
-                }); }
+                
+                // पहले UI बैलेंस को 0.00 करें ताकि पुरानी चेन का डेटा न दिखे
+                const el = document.getElementById('bal-USDC');
+                if (el) el.innerText = "0.00";
+
+                if(data?.data?.tokenBalances) { 
+                    // 🔥 THE FIX: सिर्फ उसी ब्लॉकचेन का बैलेंस फ़िल्टर करें जो ड्रॉपडाउन में सेलेक्टेड है
+                    const exactChainBalances = data.data.tokenBalances.filter(t => t.token.blockchain === blockchainParam);
+                    
+                    exactChainBalances.forEach(t => { 
+                        if (t.token.symbol === 'USDC' && el) {
+                            el.innerText = parseFloat(t.amount).toFixed(2);
+                        }
+                    }); 
+                }
             } catch(e) {}
         };
-
         window.Term = {
             show: (title) => {
                 document.getElementById('terminal-modal').classList.remove('hidden'); document.getElementById('term-title').innerText = title; document.getElementById('term-nodes').innerHTML = ''; document.getElementById('term-success-panel').classList.add('hidden');
