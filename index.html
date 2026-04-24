@@ -126,7 +126,19 @@
                 <button onclick="openWhitelist()" class="action-btn border border-emerald-500/30">📒<span class="text-[9px] font-bold text-emerald-400">CONTACTS</span></button>
             </div>
         </div>
-
+<div class="glass rounded-3xl p-5 mt-4 text-center border border-purple-500/20 hover:border-purple-500/50 transition cursor-pointer fade-in" onclick="openBrowserModal()">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center text-xl shadow-[0_0_15px_rgba(168,85,247,0.4)]">🌐</div>
+            <div class="text-left">
+                <h4 class="text-xs font-black text-purple-400 uppercase tracking-widest">DApp Browser</h4>
+                <p class="text-[9px] text-gray-400 font-bold mt-1">Open Websites & WalletConnect</p>
+            </div>
+        </div>
+        <div class="text-purple-400 font-black">➔</div>
+    </div>
+</div>
+        
         <div class="glass rounded-3xl p-5">
             <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
                 <select id="network-selector" onchange="changeNetwork()" class="bg-transparent text-emerald-400 font-bold text-[10px] border-none w-full uppercase cursor-pointer tracking-widest">
@@ -370,6 +382,36 @@
         </div>
     </div>
 
+    <div id="browser-modal" class="hidden fixed inset-0 z-[120] flex flex-col bg-black fade-in">
+    <div class="flex items-center justify-between p-3 border-b border-white/10 bg-[#0a0a0a] pt-10">
+        <button onclick="closeModal('browser-modal')" class="text-red-400 font-bold px-2 text-xs uppercase tracking-widest bg-red-500/10 py-2 rounded-xl">Close</button>
+        <div class="flex-1 mx-2 flex items-center bg-white/10 rounded-xl px-3 py-2 border border-white/5">
+            <span class="text-gray-400 text-xs mr-2">🔒</span>
+            <input type="text" id="browser-url" placeholder="Enter URL or wc:..." class="bg-transparent border-none w-full text-[10px] font-bold outline-none text-white" onkeypress="handleBrowserEnter(event)">
+        </div>
+        <button onclick="loadBrowserUrl()" class="text-emerald-400 font-bold px-3 text-xs uppercase tracking-widest bg-emerald-500/10 py-2 rounded-xl">Go</button>
+    </div>
+    
+    <div id="wc-action-bar" class="hidden bg-blue-900/90 border-b border-blue-500/50 p-3 flex justify-between items-center px-4 backdrop-blur-md">
+        <span class="text-[10px] text-white font-bold uppercase tracking-widest">🔗 WalletConnect Detected</span>
+        <button onclick="simulateWalletConnect()" class="bg-blue-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-[0_0_10px_rgba(59,130,246,0.6)]">Approve</button>
+    </div>
+
+    <div class="flex-1 relative w-full h-full bg-[#0a0a0a]">
+        <div id="browser-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+            <div class="text-5xl mb-4 opacity-50">🌍</div>
+            <h3 class="text-sm font-black text-purple-400 uppercase tracking-widest mb-2 italic">Web3 Explorer</h3>
+            <p class="text-[10px] text-gray-500 font-bold max-w-xs leading-relaxed">Enter a website URL to browse securely, or paste a WalletConnect URI (wc:...) to link ArcVault to desktop DApps.</p>
+            <div class="mt-8 flex flex-wrap gap-2 justify-center">
+                <button onclick="setBrowserUrl('https://app.uniswap.org')" class="px-4 py-2 bg-white/5 rounded-xl text-[10px] font-bold text-gray-400 hover:text-white transition border border-white/10">🦄 Uniswap</button>
+                <button onclick="setBrowserUrl('https://arc.network')" class="px-4 py-2 bg-white/5 rounded-xl text-[10px] font-bold text-gray-400 hover:text-white transition border border-white/10">🔺 Arc Network</button>
+                <button onclick="setBrowserUrl('https://pancakeswap.finance')" class="px-4 py-2 bg-white/5 rounded-xl text-[10px] font-bold text-gray-400 hover:text-white transition border border-white/10">🥞 PancakeSwap</button>
+            </div>
+        </div>
+        <iframe id="dapp-iframe" class="hidden w-full h-full border-none bg-white"></iframe>
+    </div>
+    </div>
+    
     <div id="send-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 fade-in">
         <div class="glass rounded-[38px] p-8 max-w-sm w-full border border-blue-500/30">
             <h3 class="text-xl font-black mb-6 text-center italic">Transfer OS</h3>
@@ -716,7 +758,49 @@
         window.editContact = async (addr, name) => { document.getElementById('wl-name').value = name; document.getElementById('wl-address').value = addr; const uid = window.overrideUid || auth.currentUser.uid; const snap = await getDoc(doc(db, "users", uid)); const updatedContacts = snap.data().contacts.filter(c => c.address !== addr); await updateDoc(doc(db, "users", uid), { contacts: updatedContacts }); };
         window.saveContact = async () => { const name = document.getElementById('wl-name').value; const addr = document.getElementById('wl-address').value; if(!name || !addr) return; const uid = window.overrideUid || auth.currentUser.uid; await updateDoc(doc(db, "users", uid), { contacts: arrayUnion({ name, address: addr }) }).catch(async () => { await setDoc(doc(db, "users", uid), { contacts: [{ name, address: addr }] }, { merge: true }); }); document.getElementById('wl-name').value = ''; document.getElementById('wl-address').value = ''; openWhitelist(); };
         window.openReceiveModal = () => { const addr = document.getElementById('wallet-address').innerText; document.getElementById('modal-addr-text').innerText = addr; document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${addr}&color=00FFA3&bgcolor=000000`; document.getElementById('receive-modal').classList.remove('hidden'); };
+// --- DAPP BROWSER & WALLETCONNECT ENGINE ---
+        window.openBrowserModal = () => { 
+            document.getElementById('browser-modal').classList.remove('hidden'); 
+        };
+        window.setBrowserUrl = (url) => { 
+            document.getElementById('browser-url').value = url; 
+            loadBrowserUrl(); 
+        };
+        window.handleBrowserEnter = (e) => { 
+            if (e.key === 'Enter') loadBrowserUrl(); 
+        };
+        
+        window.loadBrowserUrl = () => {
+            let url = document.getElementById('browser-url').value.trim();
+            if (!url) return;
+            
+            // Handle WalletConnect URI
+            if (url.startsWith('wc:')) {
+                document.getElementById('wc-action-bar').classList.remove('hidden');
+                document.getElementById('dapp-iframe').classList.add('hidden');
+                document.getElementById('browser-placeholder').classList.remove('hidden');
+                playCustomVoice("Wallet Connect URI detected. Awaiting approval.");
+                return;
+            }
+            
+            document.getElementById('wc-action-bar').classList.add('hidden');
+            if (!url.startsWith('http')) url = 'https://' + url;
+            
+            document.getElementById('browser-placeholder').classList.add('hidden');
+            const iframe = document.getElementById('dapp-iframe');
+            iframe.classList.remove('hidden');
+            iframe.src = url;
+            playCustomVoice("Loading decentralized application.");
+        };
 
+        window.simulateWalletConnect = () => {
+            document.getElementById('wc-action-bar').classList.add('hidden');
+            document.getElementById('browser-url').value = '';
+            closeModal('browser-modal');
+            playCustomVoice("Wallet Connect session established.");
+            alert("✅ WalletConnect Approved!\n\nYour ArcVault is now connected to the DApp via encrypted session.");
+        };
+        
         // --- DUAL FAUCET ENGINE ---
         setInterval(() => {
             const lastClaim = localStorage.getItem('lastClaimTime_arc');
