@@ -7,65 +7,64 @@ export default async function handler(req, res) {
 
     const API_KEY = process.env.CIRCLE_API_KEY;
     const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
-    const TREASURY_WALLET = process.env.TREASURY_WALLET_ID; 
+    const MASTER_WALLET_ID = process.env.CIRCLE_MASTER_WALLET_ID; 
     
     const { destinationAddress } = req.body;
-    if (!destinationAddress) return res.status(400).json({ error: "Missing destination address" });
+    if (!destinationAddress) return res.status(400).json({ success: false, error: "Destination required." });
+
+    const tUSDC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA";
+    const tARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78";
+    
+    // Web3 Raw Amounts: Assuming 18 decimals for custom tokens. 100 tokens = 100 * 10^18
+    const RAW_AMOUNT = "100000000000000000000"; 
 
     try {
+        // Fetch public key once (safe to reuse the public key)
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', { headers: { 'Authorization': `Bearer ${API_KEY}` } });
         const keyData = await keyRes.json();
-        const encryptedData = crypto.publicEncrypt({ key: keyData.data.publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(ENTITY_SECRET, 'hex'));
-        const entitySecretCiphertext = encryptedData.toString('base64');
+        const publicKey = keyData.data.publicKey;
 
-        // Dispense 100 tUSDC directly via tokenAddress
-        const payloadUsdc = {
-            idempotencyKey: crypto.randomUUID(),
-            entitySecretCiphertext: entitySecretCiphertext,
-            walletId: TREASURY_WALLET,
-            destinationAddress: destinationAddress,
-            amounts: ["100"],
-            tokenAddress: "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA", 
-            blockchain: "ARC-TESTNET",
-            feeLevel: "MEDIUM"
+        const executeContractTransfer = async (contractAddr) => {
+            // GENERATE FRESH CIPHERTEXT FOR EVERY SINGLE TRANSFER
+            const encryptedData = crypto.publicEncrypt(
+                { key: publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, 
+                Buffer.from(ENTITY_SECRET, 'hex')
+            );
+            const freshCiphertext = encryptedData.toString('base64');
+
+            const payload = {
+                idempotencyKey: crypto.randomUUID(),
+                entitySecretCiphertext: freshCiphertext,
+                walletId: MASTER_WALLET_ID,
+                contractAddress: contractAddr,
+                abiFunctionSignature: "transfer(address,uint256)",
+                abiParameters: [destinationAddress, RAW_AMOUNT],
+                feeLevel: "MEDIUM", 
+                blockchain: "ARC-TESTNET"
+            };
+
+            const response = await fetch('https://api.circle.com/v1/w3s/developer/transactions/contractExecution', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || "Contract Execution Failed");
+            return result.data.id;
         };
 
-        const resUsdc = await fetch('https://api.circle.com/v1/w3s/developer/transactions/transfer', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadUsdc)
-        });
-        const resultUsdc = await resUsdc.json();
+        // Transfer 1: tUSDC (Fresh Encryption)
+        const txIdUsdc = await executeContractTransfer(tUSDC_ADDRESS);
+        
+        // Wait 1.5 seconds to prevent rate-limiting from Circle's API
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
+        
+        // Transfer 2: tARC (Fresh Encryption)
+        const txIdArc = await executeContractTransfer(tARC_ADDRESS);
 
-        // Dispense 100 tARC directly via tokenAddress
-        const payloadArc = {
-            idempotencyKey: crypto.randomUUID(),
-            entitySecretCiphertext: entitySecretCiphertext,
-            walletId: TREASURY_WALLET,
-            destinationAddress: destinationAddress,
-            amounts: ["100"],
-            tokenAddress: "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78", 
-            blockchain: "ARC-TESTNET",
-            feeLevel: "MEDIUM"
-        };
-
-        const resArc = await fetch('https://api.circle.com/v1/w3s/developer/transactions/transfer', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadArc)
-        });
-        const resultArc = await resArc.json();
-
-        if (!resUsdc.ok || !resArc.ok) {
-             return res.status(500).json({ error: "Faucet Dispense Error", details: { usdc: resultUsdc, arc: resultArc }});
-        }
-
-        return res.status(200).json({ 
-            success: true, 
-            txHashUsdc: resultUsdc.data.id,
-            txHashArc: resultArc.data.id
-        });
+        return res.status(200).json({ success: true, txHashUsdc: txIdUsdc, txHashArc: txIdArc });
     } catch (err) {
-        return res.status(500).json({ error: "Server Error", details: err.message });
+        return res.status(500).json({ success: false, error: err.message });
     }
 }
