@@ -30,25 +30,23 @@ export default async function handler(req, res) {
         );
 
         const rawAmount = parseUnits(amount.toString(), 6).toString();
-        const destBytes32 = "0x" + destinationAddress.replace("0x", "").padStart(64, "0");
-        const emptyBytes32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        // Gateway might take a standard EVM address (not padded to 32 bytes like raw CCTP)
+        const destAddressEVMFriendly = destinationAddress; 
 
         const payload = {
             idempotencyKey: crypto.randomUUID(),
             entitySecretCiphertext: encryptedData.toString("base64"),
             walletId,
-            contractAddress: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA", // Arc TokenMessengerV2
             
-            // The Required 7-Parameter ABI
-            abiFunctionSignature: "depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)",
+            // 🔥 The Arc GatewayWallet Contract Address
+            contractAddress: "0x0077777d7EBA4688BDeF3E311b846F25870A19B9", 
+            
+            // ⚠️ Placeholder ABI: Ensure this matches Arc Gateway Docs
+            abiFunctionSignature: "deposit(uint256,address,uint32)", 
             abiParameters: [
                 rawAmount,
-                3, // Destination Domain (Arbitrum Sepolia)
-                destBytes32,
-                "0x3600000000000000000000000000000000000000", // Native USDC
-                emptyBytes32, // destinationCaller
-                0, // feeAmount
-                0  // 🔥 THE FIX: feeDomain changed to 0 to prevent internal CCTP drop
+                destAddressEVMFriendly,
+                3 // Arbitrum Sepolia Domain ID
             ],
             feeLevel: "MEDIUM",
             blockchain: "ARC-TESTNET"
@@ -66,7 +64,7 @@ export default async function handler(req, res) {
         const result = await response.json();
 
         if (!response.ok) {
-            throw new Error(result?.message || "Burn failed");
+            throw new Error(result?.message || "Gateway Send failed");
         }
 
         return res.status(200).json({
