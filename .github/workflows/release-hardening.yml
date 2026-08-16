@@ -1,0 +1,47 @@
+name: ArcVault Release Hardening
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply hardening
+        run: python3 scripts/harden_release.py
+
+      - name: Validate JavaScript
+        run: |
+          node --check api/_auth.js
+          for file in api/*.js; do node --check "$file"; done
+
+      - name: Validate JSON
+        run: |
+          python3 - <<'PY'
+          import json
+          for filename in ('package.json', 'manifest.json', 'vercel.json'):
+              with open(filename, encoding='utf-8') as handle:
+                  json.load(handle)
+              print(filename, 'OK')
+          PY
+
+      - name: Commit generated hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No generated changes"
+          else
+            git add index.html api package.json manifest.json vercel.json scripts/harden_release.py
+            git commit -m "fix: harden ArcVault testnet release"
+            git push
+          fi
