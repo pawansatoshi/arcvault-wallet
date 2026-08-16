@@ -1,57 +1,266 @@
-# ArcVault Wallet 
-**The Agent-Ready Mobile Financial Hub for the Arc Network**
+<div align="center">
 
-ArcVault is a mobile-first, Progressive Web App (PWA) smart wallet engineered exclusively for the Arc Network. Designed for the "Internet Financial System," ArcVault bridges the gap between human users and autonomous AI agents through native ERC-8183 integration, zero-gas USDC infrastructure, and cross-platform identity routing.
+# ArcVault
 
-## 🌟 Core Architecture & Features
+### Arc-native mobile wallet & financial control layer
 
-### 1. The Omni-Name Routing Engine
-ArcVault eliminates raw `0x` addresses for a true Venmo-style Web3 experience. Our Smart Search input automatically resolves cross-platform identities instantly:
-* **Native:** `@username` (Via Firebase Realtime routing)
-* **Farcaster:** `fc:username` (Resolved via Airstack API)
-* **Basenames:** `name.base.eth` (Resolved via Base RPC)
-* **ENS/Unstoppable:** `.eth` / `.crypto` (Resolved natively via ethers.js)
+<p>
+  <strong>Testnet-first • Mobile-first • Agent-ready • PWA</strong>
+</p>
 
-### 2. Built for the Agentic Economy (ERC-8183)
-ArcVault is the first mobile client built specifically to support Arc's new Agentic Economy standard.
-* **Agent Permissions:** Seamlessly fund and manage ERC-8183 job escrows directly from the mobile UI.
-* **Orchestrator Support:** Native compatibility for verifying and funding external AI swarms (e.g., Moltbook orchestrators and Openclaw agents).
-* **Yield Routing:** Users can allow specific agents to route idle USDC into USYC to farm treasury yield while awaiting job execution.
+<p>
+  <a href="https://arcvault-wallet.vercel.app/"><strong>Live App</strong></a> ·
+  <a href="https://github.com/pawansatoshi/arcvault-wallet/issues">Issues</a> ·
+  <a href="https://docs.arc.io/">Arc Docs</a>
+</p>
 
-### 3. Institutional-Grade Security & UI
-* **Circle MPC Integration:** Seedless, user-controlled wallets utilizing Circle's Programmable Wallets infrastructure.
-* **WebAuthn Passkeys:** Passwordless onboarding using native device biometrics (FaceID/Fingerprint).
-* **Q-Ready:** Built to seamlessly transition into Arc's post-quantum signature schemes at the consensus layer.
-* **Sensory Polish:** Features CSS Glassmorphism, strict 6-decimal input masking (to prevent 18-decimal gas errors), JS haptic feedback, and a native Web Audio API Engine featuring an Apple-style success chime and a 432Hz ambient "Zen Mode."
-
-### 4. Zero-Friction Transacting
-* **Invisible Gas:** Utilizing Arc's stable fee design, users pay network fees natively in USDC or EURC. No volatile gas tokens required.
-* **1-Click Batching:** Leveraging Account Abstraction (ERC-4337) to bundle `Approve` and `Swap` contracts into a single biometric scan.
-
-## 🛠️ The Tech Stack (Zero-Cost Mobile Build)
-ArcVault is engineered to be lightweight, lightning-fast, and completely bypass centralized App Store constraints.
-* **Frontend:** Vanilla HTML5, JavaScript, Tailwind CSS (via CDN)
-* **Deployment:** Vercel (Edge Network)
-* **App Distribution:** PWA (Progressive Web App) via `manifest.json` and Service Workers.
-* **Authentication:** Firebase Auth + WebAuthn
-* **Blockchain Rails:** Circle Developer Testnet API, ethers.js
-
-## 🚀 Quick Start & Deployment
-
-You can deploy your own instance of ArcVault directly from your mobile browser for free.
-
-1. Fork or clone this repository.
-2. Ensure `index.html`, `manifest.json`, and `sw.js` are in the root directory.
-3. Import the repository into [Vercel](https://vercel.com/).
-4. Deploy the project.
-5. Open the Vercel live link on any mobile browser (Chrome/Safari/Mises) and select **"Add to Home Screen"** to install the native PWA.
-
-## 🔗 Official Ecosystem Links
-* **Arc Network Documentation:** [docs.arc.network](https://docs.arc.network/arc/concepts/welcome-to-arc)
-* **Arc Contract Addresses:** [Arc Reference](https://docs.arc.network/arc/references/contract-addresses)
-* **Circle Developer Console:** [console.circle.com](https://console.circle.com/)
-* **Arc House Community:** [community.arc.network](https://community.arc.network/)
-* **ERC-8183 Implementation:** [Create your first ERC-8183 job](https://docs.arc.network/arc/tutorials/create-your-first-erc-8183-job)
+</div>
 
 ---
-*Built with precision for the Arc House Architects Program.*
+
+> **Status: Arc Testnet / experimental.** ArcVault is a development project, not a production custody product. Use test wallets and testnet funds only. Never enter a production private key or recovery secret into this application.
+
+## Overview
+
+ArcVault is a mobile-first Progressive Web App built around the Arc Testnet. It combines wallet operations, Arc-native USDC flows, identity-aware UX, transaction history, network management and an experimental DApp surface in a single lightweight interface.
+
+The project is deliberately designed as a **testnet engineering playground**: functionality is exposed through a polished mobile UI while security boundaries, API authorization and on-chain behavior are treated as first-class release gates.
+
+## What ArcVault provides
+
+| Area | Capability | Status |
+| --- | --- | --- |
+| Wallet | Circle Programmable Wallet-backed account creation | Testnet |
+| Authentication | Firebase Auth with social/email providers | Testnet |
+| Arc | Arc Testnet wallet and USDC flows | Active |
+| Transfers | API-mediated testnet token transfers | Active |
+| Ledger | Firestore-backed transaction history | Active |
+| Networks | Arc + configurable EVM networks | Experimental |
+| DApp surface | URL / QR exploration | Experimental |
+| Swaps | Project testnet swap integration | Experimental |
+| Bridge | UI scaffold pending verified CCTP integration | Disabled until verified |
+| PWA | Installable mobile web application | Active |
+
+## Arc Testnet configuration
+
+Arc Testnet currently uses **USDC as its native gas asset**. The native representation uses 18-decimal internal precision, while the ERC-20 USDC interface uses 6 decimals. ArcVault therefore needs to distinguish **display precision** from **transaction precision** rather than treating them as interchangeable. citeturn2search0turn2search2
+
+| Parameter | Value |
+| --- | --- |
+| Network | Arc Testnet |
+| Chain ID | `5042002` |
+| RPC | `https://rpc.testnet.arc.network` |
+| Explorer | `https://testnet.arcscan.app` |
+| Native gas | USDC |
+| CCTP domain | `26` |
+| Finality | Deterministic; 1 confirmation is sufficient |
+| USDC ERC-20 | `0x3600000000000000000000000000000000000000` |
+
+Official network details should always take precedence over values copied from third-party applications. citeturn2search1turn2search4
+
+## Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                         ArcVault PWA                        │
+│                                                             │
+│  Mobile UI • Auth • Wallet • Ledger • Network Manager      │
+│  DApp surface • QR • Testnet transaction UX                 │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ HTTPS
+┌──────────────────────────────▼──────────────────────────────┐
+│                       Vercel API layer                      │
+│                                                             │
+│  Auth validation • Circle API integration • validation      │
+│  wallet creation • balance • transfer • status • swap      │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+             ┌─────────────────┴─────────────────┐
+             ▼                                   ▼
+      Firebase Auth / Firestore          Circle Programmable
+                                         Wallets infrastructure
+             │                                   │
+             └─────────────────┬─────────────────┘
+                               ▼
+                         Arc Testnet
+```
+
+### Design principles
+
+1. **No secret material in the browser.** Circle API credentials and entity secrets belong only in server-side environment variables.
+2. **Authenticated API boundaries.** Browser authentication must not be treated as authorization by itself; server endpoints validate the caller before performing privileged operations.
+3. **Explicit testnet status.** Experimental or simulated functionality must never be presented as completed on-chain settlement.
+4. **Correct Arc accounting.** Native gas precision and ERC-20 display precision are handled separately. citeturn2search0turn2search6
+5. **Fail closed.** Unverified bridge or recovery mechanisms should be unavailable rather than silently performing a different operation.
+
+## Security model
+
+ArcVault is a testnet application, but its release process follows production-minded security principles:
+
+- Firebase ID-token validation for privileged API operations.
+- Circle credentials kept in Vercel server-side environment variables.
+- No private keys or entity secrets shipped to the client bundle.
+- Input validation for wallet IDs, EVM addresses, amounts and asset identifiers.
+- Explicit separation between testnet simulation and confirmed transactions.
+- Security headers at the Vercel edge.
+- Service-worker cache limited to same-origin application assets.
+- Recovery UX does **not** treat a client-generated string as proof of wallet ownership.
+
+Firebase's recommended architecture is to obtain an ID token from the authenticated client and validate that token on the backend before using the authenticated UID. citeturn3search7
+
+## Technology
+
+- **Frontend:** HTML5, JavaScript, Tailwind CSS
+- **PWA:** Web App Manifest + Service Worker
+- **Authentication:** Firebase Authentication
+- **Database:** Firebase Firestore
+- **Wallet infrastructure:** Circle Programmable Wallets
+- **Blockchain:** Arc Testnet / EVM
+- **API runtime:** Vercel Functions
+- **Web3 tooling:** ethers.js
+- **Deployment:** Vercel
+
+## Local development
+
+### Requirements
+
+- Node.js 18+
+- npm
+- A Firebase project
+- Circle Developer credentials for the server-side wallet flows
+- An Arc Testnet wallet / test funds
+
+### Install
+
+```bash
+git clone https://github.com/pawansatoshi/arcvault-wallet.git
+cd arcvault-wallet
+npm install
+```
+
+### Environment variables
+
+Configure secrets in your local `.env` or Vercel project settings. **Do not commit them.**
+
+```text
+CIRCLE_API_KEY=
+CIRCLE_ENTITY_SECRET=
+CIRCLE_MASTER_WALLET_ID=
+WALLET_SET_ID=
+```
+
+Firebase configuration used by the browser is intentionally limited to public Firebase client configuration. Privileged Circle credentials must remain server-side.
+
+### Run
+
+ArcVault is a static-first application with Vercel Functions under `/api`. For the most accurate local environment, use Vercel's local development workflow or deploy a preview build.
+
+## Release / QA gate
+
+Before calling a build release-ready, validate:
+
+### Frontend
+
+- [ ] Mobile viewport: 320px, 360px, 390px, 412px+
+- [ ] Desktop viewport: 1024px, 1280px, 1440px+
+- [ ] No modal overflow or horizontal scrolling
+- [ ] PWA manifest loads
+- [ ] Service worker installs and updates correctly
+- [ ] Refresh does not corrupt authenticated state
+- [ ] Loading and failure states are visible
+
+### Authentication
+
+- [ ] Google login
+- [ ] X login where Firebase provider configuration permits it
+- [ ] GitHub login
+- [ ] Email login/signup
+- [ ] Logout clears local authorization state
+- [ ] Unlinking the only sign-in provider is blocked
+- [ ] Privileged API calls require a valid Firebase ID token
+
+### Blockchain
+
+- [ ] Arc Testnet chain ID is `5042002`
+- [ ] Arc RPC is reachable
+- [ ] USDC display precision is correct
+- [ ] Native gas precision is not confused with ERC-20 precision
+- [ ] Transfer amounts are validated before submission
+- [ ] Receipts / operation status are checked before reporting success
+- [ ] Explorer links are generated only for real transaction hashes
+
+### Security
+
+- [ ] No Circle secret appears in client source
+- [ ] No fake recovery credential can impersonate another Firebase UID
+- [ ] No endpoint accepts arbitrary wallet ownership claims
+- [ ] Bridge is disabled until a real bridge protocol is integrated
+- [ ] Faucet endpoints are authenticated and rate-limited before funding is enabled
+- [ ] Security headers are present in production
+
+The repository also contains `QA_RELEASE_GATE.md` as the project-specific release checklist.
+
+## Known testnet limitations
+
+Arc is still a testnet and can experience instability or planned/unplanned changes. citeturn0search0
+
+Some ArcVault features are intentionally marked experimental. In particular, the DApp browser, custom networks, project-issued test tokens and swap surface should not be interpreted as production financial infrastructure.
+
+The bridge UI is kept behind a safety boundary until its implementation is connected to a verified CCTP flow. Arc's official bridge integration uses CCTP domain `26` on Arc Testnet. citeturn2search1
+
+## Project structure
+
+```text
+arcvault-wallet/
+├── api/
+│   ├── approve.js
+│   ├── balance.js
+│   ├── faucet.js
+│   ├── status.js
+│   ├── swap.js
+│   ├── transfer.js
+│   ├── wallet.js
+│   └── _auth.js
+├── index.html
+├── manifest.json
+├── sw.js
+├── logo.png
+├── package.json
+├── QA_RELEASE_GATE.md
+└── README.md
+```
+
+## Contributing
+
+Keep changes small, testable and explicit about their testnet status. Do not commit API credentials, entity secrets, private keys, service-account JSON files or generated wallet secrets.
+
+For security-sensitive changes, verify both sides of the boundary:
+
+```text
+browser → authenticated API request → server validation → Circle / Arc
+```
+
+A UI-only security control is not considered a sufficient authorization boundary.
+
+## Disclaimer
+
+ArcVault is an experimental testnet project. It is provided for development, testing and demonstration purposes. It is not a bank, custodian, exchange, investment product or production wallet. Testnet assets have no intended monetary value.
+
+## Links
+
+- [Arc documentation](https://docs.arc.io/)
+- [Arc Testnet connection guide](https://docs.arc.io/integrate/connect-to-arc)
+- [Arc contract addresses](https://docs.arc.io/arc/references/contract-addresses)
+- [Arc bridge integration](https://docs.arc.io/integrate/infrastructure/bridges)
+- [Circle Developers](https://developers.circle.com/)
+- [Circle Faucet](https://faucet.circle.com/)
+- [ArcScan](https://testnet.arcscan.app/)
+- [Live ArcVault](https://arcvault-wallet.vercel.app/)
+
+---
+
+<div align="center">
+
+**ArcVault — testnet infrastructure for the Arc-native financial interface.**
+
+</div>
