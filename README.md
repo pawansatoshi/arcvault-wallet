@@ -4,9 +4,7 @@
 
 ### Arc-native mobile wallet & financial control layer
 
-<p>
-  <strong>Testnet-first • Mobile-first • Agent-ready • PWA</strong>
-</p>
+<p><strong>Testnet-first • Mobile-first • Agent-ready • PWA</strong></p>
 
 <p>
   <a href="https://arcvault-wallet.vercel.app/"><strong>Live App</strong></a> ·
@@ -43,7 +41,7 @@ The project is deliberately designed as a **testnet engineering playground**: fu
 
 ## Arc Testnet configuration
 
-Arc Testnet currently uses **USDC as its native gas asset**. The native representation uses 18-decimal internal precision, while the ERC-20 USDC interface uses 6 decimals. ArcVault therefore needs to distinguish **display precision** from **transaction precision** rather than treating them as interchangeable. citeturn2search0turn2search2
+Arc Testnet uses **USDC as its native gas asset**. Native gas accounting uses 18-decimal internal precision, while the ERC-20 USDC interface uses 6 decimals. ArcVault must therefore distinguish **display precision** from **transaction precision**.
 
 | Parameter | Value |
 | --- | --- |
@@ -56,7 +54,7 @@ Arc Testnet currently uses **USDC as its native gas asset**. The native represen
 | Finality | Deterministic; 1 confirmation is sufficient |
 | USDC ERC-20 | `0x3600000000000000000000000000000000000000` |
 
-Official network details should always take precedence over values copied from third-party applications. citeturn2search1turn2search4
+See the official Arc documentation for the authoritative network configuration.
 
 ## Architecture
 
@@ -90,7 +88,7 @@ Official network details should always take precedence over values copied from t
 1. **No secret material in the browser.** Circle API credentials and entity secrets belong only in server-side environment variables.
 2. **Authenticated API boundaries.** Browser authentication must not be treated as authorization by itself; server endpoints validate the caller before performing privileged operations.
 3. **Explicit testnet status.** Experimental or simulated functionality must never be presented as completed on-chain settlement.
-4. **Correct Arc accounting.** Native gas precision and ERC-20 display precision are handled separately. citeturn2search0turn2search6
+4. **Correct Arc accounting.** Native gas precision and ERC-20 display precision are handled separately.
 5. **Fail closed.** Unverified bridge or recovery mechanisms should be unavailable rather than silently performing a different operation.
 
 ## Security model
@@ -106,8 +104,6 @@ ArcVault is a testnet application, but its release process follows production-mi
 - Service-worker cache limited to same-origin application assets.
 - Recovery UX does **not** treat a client-generated string as proof of wallet ownership.
 
-Firebase's recommended architecture is to obtain an ID token from the authenticated client and validate that token on the backend before using the authenticated UID. citeturn3search7
-
 ## Technology
 
 - **Frontend:** HTML5, JavaScript, Tailwind CSS
@@ -118,6 +114,7 @@ Firebase's recommended architecture is to obtain an ID token from the authentica
 - **Blockchain:** Arc Testnet / EVM
 - **API runtime:** Vercel Functions
 - **Web3 tooling:** ethers.js
+- **JWT verification:** jose
 - **Deployment:** Vercel
 
 ## Local development
@@ -127,8 +124,8 @@ Firebase's recommended architecture is to obtain an ID token from the authentica
 - Node.js 18+
 - npm
 - A Firebase project
-- Circle Developer credentials for the server-side wallet flows
-- An Arc Testnet wallet / test funds
+- Circle Developer credentials for server-side wallet flows
+- Arc Testnet access / test funds
 
 ### Install
 
@@ -147,17 +144,18 @@ CIRCLE_API_KEY=
 CIRCLE_ENTITY_SECRET=
 CIRCLE_MASTER_WALLET_ID=
 WALLET_SET_ID=
+FIREBASE_PROJECT_ID=arcvault-cc843
 ```
 
-Firebase configuration used by the browser is intentionally limited to public Firebase client configuration. Privileged Circle credentials must remain server-side.
+Firebase browser configuration is public client configuration. Privileged Circle credentials and server secrets must remain server-side.
 
 ### Run
 
-ArcVault is a static-first application with Vercel Functions under `/api`. For the most accurate local environment, use Vercel's local development workflow or deploy a preview build.
+ArcVault is a static-first application with Vercel Functions under `/api`. For the closest local reproduction of production behavior, use Vercel's local development workflow or deploy a preview build.
 
 ## Release / QA gate
 
-Before calling a build release-ready, validate:
+Before calling a build release-ready, validate the complete checklist in [`QA_RELEASE_GATE.md`](QA_RELEASE_GATE.md).
 
 ### Frontend
 
@@ -195,18 +193,14 @@ Before calling a build release-ready, validate:
 - [ ] No fake recovery credential can impersonate another Firebase UID
 - [ ] No endpoint accepts arbitrary wallet ownership claims
 - [ ] Bridge is disabled until a real bridge protocol is integrated
-- [ ] Faucet endpoints are authenticated and rate-limited before funding is enabled
+- [ ] Faucet endpoints are authenticated and wallet-bound
 - [ ] Security headers are present in production
-
-The repository also contains `QA_RELEASE_GATE.md` as the project-specific release checklist.
 
 ## Known testnet limitations
 
-Arc is still a testnet and can experience instability or planned/unplanned changes. citeturn0search0
+ArcVault is intentionally a testnet project. Network conditions, APIs and testnet assets can change. Experimental features should not be interpreted as production financial infrastructure.
 
-Some ArcVault features are intentionally marked experimental. In particular, the DApp browser, custom networks, project-issued test tokens and swap surface should not be interpreted as production financial infrastructure.
-
-The bridge UI is kept behind a safety boundary until its implementation is connected to a verified CCTP flow. Arc's official bridge integration uses CCTP domain `26` on Arc Testnet. citeturn2search1
+The DApp browser and custom-network surface are convenience features and do not constitute a secure browser wallet sandbox. The bridge surface remains disabled until it is connected to a verified CCTP flow.
 
 ## Project structure
 
@@ -221,11 +215,14 @@ arcvault-wallet/
 │   ├── transfer.js
 │   ├── wallet.js
 │   └── _auth.js
+├── scripts/
+│   └── harden_release.py
 ├── index.html
 ├── manifest.json
 ├── sw.js
 ├── logo.png
 ├── package.json
+├── vercel.json
 ├── QA_RELEASE_GATE.md
 └── README.md
 ```
