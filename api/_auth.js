@@ -41,7 +41,44 @@ export async function requireAuth(req) {
   }
 }
 
+export async function requireOwnedWallet(req, walletId) {
+  const auth = await requireAuth(req);
+  if (!walletId || !/^[0-9a-f-]{20,80}$/i.test(String(walletId))) {
+    const error = new Error('Invalid wallet identifier.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const apiKey = process.env.CIRCLE_API_KEY;
+  if (!apiKey) {
+    const error = new Error('Circle API is not configured.');
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const response = await fetch(`https://api.circle.com/v1/w3s/wallets/${encodeURIComponent(walletId)}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result?.data?.wallet) {
+    const error = new Error('Wallet could not be verified.');
+    error.statusCode = response.status === 404 ? 404 : 502;
+    throw error;
+  }
+
+  const wallet = result.data.wallet;
+  if (wallet.refId !== auth.uid && wallet.userId !== auth.uid) {
+    const error = new Error('Wallet is not owned by the authenticated user.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return { ...auth, wallet };
+}
+
 export function authError(res, error) {
   const status = Number(error?.statusCode) || 500;
-  return res.status(status).json({ error: status === 401 ? error.message : 'Authentication service error.' });
+  return res.status(status).json({
+    error: status >= 500 ? 'Authentication or authorization service error.' : error.message,
+  });
 }
