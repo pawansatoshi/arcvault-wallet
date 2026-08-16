@@ -11,7 +11,7 @@ for path in API.glob('*.js'):
     if "from './_auth.js'" not in text:
         text = "import { requireAuth, requireOwnedWallet, authError } from './_auth.js';\n" + text
     marker = 'export default async function handler(req, res) {'
-    if marker in text and 'const __authResult = await requireAuth(req)' not in text:
+    if marker in text and 'let __authResult;' not in text:
         guard = """export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
     let __authResult;
@@ -23,7 +23,8 @@ for path in API.glob('*.js'):
 path = API / 'wallet.js'
 text = path.read_text()
 text = text.replace('const { userId } = req.body;', 'const userId = __authResult.uid;')
-text = text.replace('accountType: "EOA"', 'accountType: "EOA",\n            refId: userId')
+if 'refId: userId' not in text:
+    text = text.replace('accountType: "EOA"', 'accountType: "EOA",\n            refId: userId')
 path.write_text(text)
 
 for name in ('balance.js', 'transfer.js', 'approve.js', 'swap.js'):
