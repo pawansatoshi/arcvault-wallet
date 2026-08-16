@@ -478,6 +478,24 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        if (!window.__arcvaultApiFetchInstalled) {
+            window.__arcvaultApiFetchInstalled = true;
+            const __nativeFetch = window.fetch.bind(window);
+            window.fetch = async (input, init = {}) => {
+                const url = typeof input === 'string' ? input : input?.url || '';
+                if (url.startsWith('/api/')) {
+                    const user = auth.currentUser;
+                    if (user) {
+                        const token = await user.getIdToken();
+                        const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
+                        headers.set('Authorization', `Bearer ${token}`);
+                        init = { ...init, headers };
+                    }
+                }
+                return __nativeFetch(input, init);
+            };
+        }
+
 
         let synth = window.speechSynthesis;
         let isMusicPlaying = false;
@@ -782,7 +800,7 @@
             document.querySelectorAll('.faucet-btn').forEach(b => { b.innerText = "PROCESSING..."; b.disabled = true; });
             
             try {
-                const res = await fetch('/api/faucet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ destinationAddress: document.getElementById('wallet-address').innerText }) }); const data = await res.json();
+                const res = await fetch('/api/faucet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ walletId: wId }) }); const data = await res.json();
                 if(data.success) {
                     const realTxUsdc = await fetchRealBlockchainHash(data.txHashUsdc);
                     const realTxArc = await fetchRealBlockchainHash(data.txHashArc);
@@ -848,10 +866,7 @@
 
         window.simulateWalletConnect = () => {
             document.getElementById('wc-action-bar').classList.add('hidden');
-            document.getElementById('browser-url').value = '';
-            closeModal('browser-modal');
-            playCustomVoice("Wallet Connect session established.");
-            alert("✅ WalletConnect Linked!\n\nArcVault is now communicating with the DApp.");
+            showError("WalletConnect Not Configured", "A QR URI can be detected, but this build does not contain a real WalletConnect session engine. No wallet session was approved.", "ERR-WC-NOT-CONFIGURED");
         };
 
         window.startQRScanner = () => {
@@ -916,27 +931,7 @@
         window.openBridgeModal = (e, symbol) => { e.stopPropagation(); document.getElementById('bridge-asset').value = symbol; document.getElementById('bridge-modal').classList.remove('hidden'); document.getElementById('bridge-form').classList.remove('hidden'); document.getElementById('bridge-success').classList.add('hidden'); };
         
         window.executeBridge = async () => {
-            const uid = window.overrideUid || auth.currentUser?.uid; if(!uid) return;
-            const snap = await getDoc(doc(db, "users", uid)); const wId = snap.data()?.walletId?.replace(/[^a-zA-Z0-9-]/g, '');
-            const btn = document.getElementById('exec-bridge-btn'); const targetNet = document.getElementById('bridge-target-net').value; const asset = document.getElementById('bridge-asset').value; const amount = document.getElementById('bridge-amount').value;
-            if(!amount || amount <= 0) return alert("Enter amount to bridge.");
-
-            btn.innerText = "LOCKING ASSETS..."; btn.disabled = true; const startTime = Date.now();
-            try {
-                const myAddress = document.getElementById('wallet-address').innerText;
-                const res = await fetch('/api/transfer', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ walletId: wId, destinationAddress: myAddress, amount: amount.toString(), assetSymbol: asset }) });
-                const data = await res.json(); if(!res.ok) throw new Error(`${data.details?.message || data.error}|Bridge locking failed.|ERR-BRDG`);
-                const circleOpId = data.data?.id; if(!circleOpId) throw new Error("API did not return a valid Operation ID.|API Error|ERR-NULL");
-
-                const realTxId = await fetchRealBlockchainHash(circleOpId); const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-                await updateDoc(doc(db, "users", uid), { txHistory: arrayUnion({ type: 'Bridge', symbol: asset, targetNet: targetNet, amount: amount, txId: realTxId, date: new Date().toISOString() }) }).catch(async () => { await setDoc(doc(db, "users", uid), { txHistory: [{ type: 'Bridge', symbol: asset, targetNet: targetNet, amount: amount, txId: realTxId, date: new Date().toISOString() }] }, { merge: true }); });
-
-                document.getElementById('bridge-form').classList.add('hidden'); document.getElementById('bridge-success').classList.remove('hidden');
-                document.getElementById('bridge-success-title').innerText = "Bridge Successful"; document.getElementById('bridge-success-time').innerText = `Locked in ${duration} seconds`; document.getElementById('bridge-tx-id').innerText = `Hash: ${realTxId.substring(0,14)}...`;
-                const trackUrl = realTxId.startsWith('0x') ? `https://testnet.arcscan.app/tx/${realTxId}` : '#'; document.getElementById('bridge-track-btn').href = trackUrl;
-                playCustomVoice("Bridge initiated.");
-            } catch(e) { const parts = e.message.split('|'); showError(`Bridge Error: ${parts[0]}`, parts[1] || "Verify network state.", parts[2] || "ERR-500"); } 
-            finally { btn.innerText = "INITIATE BRIDGE"; btn.disabled = false; }
+            showError("Bridge Unavailable", "The bridge surface is disabled until a verified CCTP integration is connected. No assets were moved.", "ERR-BRIDGE-DISABLED");
         };
 
         window.startExperience = () => {

@@ -1,6 +1,11 @@
+import { requireAuth, requireOwnedWallet, authError } from './_auth.js';
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
+    let __authResult;
+    try { __authResult = await requireAuth(req); } catch (e) { return authError(res, e); }
+
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -10,7 +15,7 @@ export default async function handler(req, res) {
     const WALLET_SET_ID = process.env.WALLET_SET_ID; 
 
     // The unique user ID from Firebase to link to this wallet
-    const { userId } = req.body; 
+    const userId = __authResult.uid; 
 
     try {
         const keyRes = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', { headers: { 'Authorization': `Bearer ${API_KEY}` } });
@@ -23,7 +28,8 @@ export default async function handler(req, res) {
             blockchains: ["ARC-TESTNET"],
             count: 1,
             walletSetId: WALLET_SET_ID,
-            accountType: "EOA" 
+            accountType: "EOA",
+            refId: userId 
         };
 
         const response = await fetch('https://api.circle.com/v1/w3s/developer/wallets', {

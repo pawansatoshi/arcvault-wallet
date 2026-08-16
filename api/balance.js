@@ -1,10 +1,16 @@
+import { requireAuth, requireOwnedWallet, authError } from './_auth.js';
 export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
+    let __authResult;
+    try { __authResult = await requireAuth(req); } catch (e) { return authError(res, e); }
+
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const API_KEY = process.env.CIRCLE_API_KEY;
     const { walletId } = req.body;
+    try { await requireOwnedWallet(req, walletId); } catch (e) { return authError(res, e); }
 
     if (!walletId) return res.status(400).json({ error: "Missing walletId parameter" });
 

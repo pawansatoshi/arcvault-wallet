@@ -1,6 +1,11 @@
+import { requireAuth, requireOwnedWallet, authError } from './_auth.js';
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
+    let __authResult;
+    try { __authResult = await requireAuth(req); } catch (e) { return authError(res, e); }
+
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') return res.status(200).end();
@@ -9,8 +14,10 @@ export default async function handler(req, res) {
     const ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
     const MASTER_WALLET_ID = process.env.CIRCLE_MASTER_WALLET_ID; 
     
-    const { destinationAddress } = req.body;
-    if (!destinationAddress) return res.status(400).json({ success: false, error: "Destination required." });
+    const { walletId } = req.body;
+    let __owned;
+    try { __owned = await requireOwnedWallet(req, walletId); } catch (e) { return authError(res, e); }
+    const destinationAddress = __owned.wallet.address;
 
     const tUSDC_ADDRESS = "0x28E49B36C1c6fD16ad81aB152488f37C93b3D8CA";
     const tARC_ADDRESS = "0xe66a11cb4b147F208e6d81B7540bfc83E1680c78";
